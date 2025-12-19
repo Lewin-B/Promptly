@@ -5,9 +5,15 @@ import {
   pgTableCreator,
   text,
   timestamp,
+  jsonb,
+  pgEnum,
 } from "drizzle-orm/pg-core";
 
 export const createTable = pgTableCreator((name) => `pg-drizzle_${name}`);
+
+export const difficultyEnum = pgEnum("difficulty", ["Easy", "Medium", "Hard"]);
+export const categoryEnum = pgEnum("category", ["React", "Python", "C++"]);
+export const statusEnum = pgEnum("status", ["success, failure"]);
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -81,3 +87,50 @@ export const accountRelations = relations(account, ({ one }) => ({
 export const sessionRelations = relations(session, ({ one }) => ({
   user: one(user, { fields: [session.userId], references: [user.id] }),
 }));
+
+// project related tables
+export interface ProblemContent {
+  timeLimit: string;
+  aiConstraints: string;
+  longDescription: string;
+  dataInterface: string;
+  requirements: Array<{
+    title: string;
+    items: string[];
+    isCritical?: boolean;
+  }>;
+  exampleInteraction?: {
+    input: string;
+    immediate: string;
+    async: {
+      delay: string;
+      cases: string[];
+    };
+  };
+}
+
+export type codeContent = Record<string, string>;
+
+// 2. Define the Table
+export const Problem = pgTable("problems", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  difficulty: difficultyEnum("difficulty").default("Medium").notNull(),
+  category: categoryEnum("category").notNull(),
+  description: jsonb("description").$type<ProblemContent>().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const Submission = pgTable("submissions", {
+  id: text("id").primaryKey(),
+  problemId: text("problem_id").references(() => Problem.id, {
+    onDelete: "cascade",
+  }),
+  accountId: text("problem_id").references(() => Problem.id, {
+    onDelete: "cascade",
+  }),
+  submittedCode: jsonb("submitted_code").$type<codeContent>().notNull(),
+  status: statusEnum("status").notNull(),
+  chatHistory: jsonb("chat_history").notNull(),
+});
