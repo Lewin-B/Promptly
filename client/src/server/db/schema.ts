@@ -1,22 +1,24 @@
 import { relations } from "drizzle-orm";
 import {
   boolean,
-  pgTable,
   pgTableCreator,
   text,
+  integer,
+  serial,
+  uuid,
   timestamp,
   jsonb,
   pgEnum,
 } from "drizzle-orm/pg-core";
 
-export const createTable = pgTableCreator((name) => `pg-drizzle_${name}`);
+export const createTable = pgTableCreator((name) => `promptly_${name}`);
 
 export const difficultyEnum = pgEnum("difficulty", ["Easy", "Medium", "Hard"]);
 export const categoryEnum = pgEnum("category", ["React", "Python", "C++"]);
 export const statusEnum = pgEnum("status", ["success, failure"]);
 
-export const user = pgTable("user", {
-  id: text("id").primaryKey(),
+export const user = createTable("user", {
+  id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified")
@@ -31,24 +33,24 @@ export const user = pgTable("user", {
     .notNull(),
 });
 
-export const session = pgTable("session", {
-  id: text("id").primaryKey(),
+export const session = createTable("session", {
+  id: uuid("id").primaryKey().defaultRandom(),
   expiresAt: timestamp("expires_at").notNull(),
   token: text("token").notNull().unique(),
   createdAt: timestamp("created_at").notNull(),
   updatedAt: timestamp("updated_at").notNull(),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
-  userId: text("user_id")
+  userId: uuid("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
 });
 
-export const account = pgTable("account", {
-  id: text("id").primaryKey(),
-  accountId: text("account_id").notNull(),
+export const account = createTable("account", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  accountId: uuid("account_id").notNull(),
   providerId: text("provider_id").notNull(),
-  userId: text("user_id")
+  userId: uuid("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   accessToken: text("access_token"),
@@ -62,8 +64,8 @@ export const account = pgTable("account", {
   updatedAt: timestamp("updated_at").notNull(),
 });
 
-export const verification = pgTable("verification", {
-  id: text("id").primaryKey(),
+export const verification = createTable("verification", {
+  id: uuid("id").primaryKey().defaultRandom(),
   identifier: text("identifier").notNull(),
   value: text("value").notNull(),
   expiresAt: timestamp("expires_at").notNull(),
@@ -112,8 +114,8 @@ export interface ProblemContent {
 export type codeContent = Record<string, string>;
 
 // 2. Define the Table
-export const Problem = pgTable("problems", {
-  id: text("id").primaryKey(),
+export const Problem = createTable("problem", {
+  id: serial("id").primaryKey(),
   name: text("name").notNull(),
   difficulty: difficultyEnum("difficulty").default("Medium").notNull(),
   category: categoryEnum("category").notNull(),
@@ -122,12 +124,12 @@ export const Problem = pgTable("problems", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const Submission = pgTable("submissions", {
-  id: text("id").primaryKey(),
-  problemId: text("problem_id").references(() => Problem.id, {
+export const Submission = createTable("submission", {
+  id: serial("id").primaryKey(),
+  problemId: integer("problem_id").references(() => Problem.id, {
     onDelete: "cascade",
   }),
-  accountId: text("problem_id").references(() => Problem.id, {
+  accountId: uuid("account_id").references(() => account.id, {
     onDelete: "cascade",
   }),
   submittedCode: jsonb("submitted_code").$type<codeContent>().notNull(),
