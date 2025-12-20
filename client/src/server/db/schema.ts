@@ -111,7 +111,7 @@ export interface ProblemContent {
   };
 }
 
-export type codeContent = Record<string, string>;
+export type CodeContent = Record<string, string>;
 
 // 2. Define the Table
 export const Problem = createTable("problem", {
@@ -120,6 +120,7 @@ export const Problem = createTable("problem", {
   difficulty: difficultyEnum("difficulty").default("Medium").notNull(),
   category: categoryEnum("category").notNull(),
   description: jsonb("description").$type<ProblemContent>().notNull(),
+  starterCode: jsonb("starter_code").$type<CodeContent>().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -132,7 +133,7 @@ export const Submission = createTable("submission", {
   accountId: uuid("account_id").references(() => account.id, {
     onDelete: "cascade",
   }),
-  submittedCode: jsonb("submitted_code").$type<codeContent>().notNull(),
+  submittedCode: jsonb("submitted_code").$type<CodeContent>().notNull(),
   status: statusEnum("status").notNull(),
   chatHistory: jsonb("chat_history").notNull(),
 });

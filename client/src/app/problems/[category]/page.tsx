@@ -96,37 +96,42 @@ export default function ProblemsByCategoryPage({
         ) : data?.length ? (
           <div className="grid gap-4 sm:grid-cols-2">
             {data.map((problem) => (
-              <Card
+              <Link
                 key={problem.id}
-                className="border-slate-200/70 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+                href={`/problems/${problem.category.toLowerCase()}/${problem.id}`}
+                className="block"
               >
-                <CardHeader className="gap-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <CardTitle className="text-lg">
-                      {problem.name}
-                    </CardTitle>
-                    <Badge
-                      variant="outline"
-                      className={
-                        difficultyStyles[problem.difficulty] ??
-                        "border-slate-200 text-slate-600"
-                      }
-                    >
-                      {problem.difficulty}
-                    </Badge>
-                  </div>
-                  <CardDescription>
-                    {getSummary(problem.description?.longDescription)}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                    <span>Category: {problem.category}</span>
-                    <span>•</span>
-                    <span>Updated {problem.updatedAt.toLocaleDateString()}</span>
-                  </div>
-                </CardContent>
-              </Card>
+                <Card className="border-slate-200/70 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
+                  <CardHeader className="gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <CardTitle className="text-lg">
+                        {problem.name}
+                      </CardTitle>
+                      <Badge
+                        variant="outline"
+                        className={
+                          difficultyStyles[problem.difficulty] ??
+                          "border-slate-200 text-slate-600"
+                        }
+                      >
+                        {problem.difficulty}
+                      </Badge>
+                    </div>
+                    <CardDescription>
+                      {getSummary(problem.description?.longDescription)}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                      <span>Category: {problem.category}</span>
+                      <span>•</span>
+                      <span>
+                        Updated {problem.updatedAt.toLocaleDateString()}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
         ) : (
