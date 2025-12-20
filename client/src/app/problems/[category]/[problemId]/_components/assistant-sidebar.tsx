@@ -23,9 +23,9 @@ type AiModel = RouterInputs["assistant"]["assist"]["model"];
 
 const MODEL_OPTIONS: Array<{ value: AiModel; label: string }> = [
   { value: "qwen3-coder", label: "Qwen3 Coder" },
-  { value: "kimi-k2", label: "Kimi K2" },
-  { value: "deepseek", label: "Deepseek" },
-  { value: "gpt-oss", label: "GPT-OSS" },
+  { value: "kimi-k2", label: "Kimi K2 Instruct" },
+  { value: "deepseek", label: "Deepseek V3" },
+  { value: "gpt-oss", label: "GPT-OSS-120b" },
 ];
 
 type AssistantSidebarProps = {
