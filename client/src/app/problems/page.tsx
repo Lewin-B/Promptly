@@ -3,13 +3,15 @@
 import { Card, CardContent } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { categoryEnum } from "~/server/db/schema";
-import { Calculator, Cpu, FlaskConical, Filter } from "lucide-react";
+import { Filter } from "lucide-react";
+import { FaReact, FaPython } from "react-icons/fa";
+import { SiCplusplus } from "react-icons/si";
 import { useRouter } from "next/navigation";
 
 const categoryIcons = {
-  react: Cpu,
-  python: FlaskConical,
-  "c++": Calculator,
+  react: FaReact,
+  python: FaPython,
+  "c++": SiCplusplus,
 };
 
 export default function Problems() {
