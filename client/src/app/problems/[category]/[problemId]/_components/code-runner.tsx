@@ -1,12 +1,19 @@
 "use client";
 
 import {
-  SandpackCodeEditor,
-  SandpackLayout,
-  SandpackPreview,
-  SandpackProvider,
-  type SandpackFiles,
-} from "@codesandbox/sandpack-react";
+  SandboxCodeEditor,
+  SandboxLayout,
+  SandboxPreview,
+  SandboxProvider,
+  SandboxTabs,
+  SandboxTabsContent,
+  SandboxTabsList,
+  SandboxTabsTrigger,
+} from "~/components/ui/sandbox";
+
+import { Files, Wallpaper } from "lucide-react";
+
+import type { SandpackFiles } from "@codesandbox/sandpack-react";
 
 import { AssistantSidebar } from "./assistant-sidebar";
 import type { ProblemDescriptionProps } from "./problem-description";
@@ -24,7 +31,7 @@ export default function CodeRunner({
   problemDescription: ProblemDescriptionProps;
 }) {
   return (
-    <SandpackProvider
+    <SandboxProvider
       template="react"
       files={starterFiles}
       options={{
@@ -68,24 +75,40 @@ export default function CodeRunner({
                   </p>
                 </header>
 
-                <SandpackLayout>
-                  <SandpackCodeEditor
-                    className="min-h-160"
-                    showTabs
-                    showLineNumbers
-                    wrapContent
-                  />
-                  <SandpackPreview
-                    showNavigator
-                    showRefreshButton
-                    style={{ height: "78vh" }}
-                  />
-                </SandpackLayout>
+                <SandboxLayout>
+                  <SandboxTabs>
+                    <SandboxTabsList>
+                      <div className="flex flex-1 items-center gap-2">
+                        <SandboxTabsTrigger value="code">
+                          <Files /> Files
+                        </SandboxTabsTrigger>
+                        <SandboxTabsTrigger value="preview">
+                          <Wallpaper /> Preview
+                        </SandboxTabsTrigger>
+                      </div>
+                    </SandboxTabsList>
+                    <SandboxTabsContent value="code">
+                      <SandboxCodeEditor
+                        className="min-h-160"
+                        showTabs
+                        showLineNumbers
+                        wrapContent
+                      />
+                    </SandboxTabsContent>
+                    <SandboxTabsContent value="preview">
+                      <SandboxPreview
+                        showNavigator
+                        showRefreshButton
+                        style={{ height: "78vh" }}
+                      />
+                    </SandboxTabsContent>
+                  </SandboxTabs>
+                </SandboxLayout>
               </div>
             </main>
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
-    </SandpackProvider>
+    </SandboxProvider>
   );
 }
