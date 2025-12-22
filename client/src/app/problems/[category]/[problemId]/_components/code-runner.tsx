@@ -12,9 +12,10 @@ import {
   SandboxTests,
 } from "~/components/ui/sandbox";
 
-import { Files, TestTube, Wallpaper } from "lucide-react";
+import { CheckCircle2, Files, TestTube, Wallpaper } from "lucide-react";
 
 import type { SandpackFiles } from "@codesandbox/sandpack-react";
+import { useCallback, useState } from "react";
 
 import { AssistantSidebar } from "./assistant-sidebar";
 import type { ProblemDescriptionProps } from "./problem-description";
@@ -31,6 +32,30 @@ export default function CodeRunner({
   starterFiles: SandpackFiles;
   problemDescription: ProblemDescriptionProps;
 }) {
+  const [testsPassing, setTestsPassing] = useState(false);
+
+  const handleTestsComplete = useCallback((specs: Record<string, unknown>) => {
+    const collectStatuses = (node: unknown): string[] => {
+      if (!node || typeof node !== "object") return [];
+      const typedNode = node as {
+        tests?: Record<string, { status?: string }>;
+        describes?: Record<string, unknown>;
+      };
+      const testStatuses = Object.values(typedNode.tests ?? {}).flatMap(
+        (test) => (test.status ? [test.status] : []),
+      );
+      const describeStatuses = Object.values(typedNode.describes ?? {}).flatMap(
+        collectStatuses,
+      );
+      return [...testStatuses, ...describeStatuses];
+    };
+
+    const statuses = Object.values(specs).flatMap(collectStatuses);
+    setTestsPassing(
+      statuses.length > 0 && statuses.every((status) => status === "pass"),
+    );
+  }, []);
+
   return (
     <SandboxProvider
       template="react"
@@ -91,6 +116,11 @@ export default function CodeRunner({
                       className="h-full border-slate-200/70 bg-slate-50/60"
                       defaultValue={"code"}
                     >
+                      {testsPassing && (
+                        <div className="pointer-events-none absolute top-3 right-3 z-10 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-700 shadow-sm">
+                          <CheckCircle2 className="h-4 w-4" />
+                        </div>
+                      )}
                       <SandboxTabsList className="border-b border-slate-200/60 bg-white/70 px-3 py-2">
                         <div className="flex flex-1 items-center gap-2">
                           <SandboxTabsTrigger
@@ -129,7 +159,10 @@ export default function CodeRunner({
                         />
                       </SandboxTabsContent>
                       <SandboxTabsContent value="tests" className="bg-white">
-                        <SandboxTests className="min-h-160" />
+                        <SandboxTests
+                          className="min-h-160"
+                          onComplete={handleTestsComplete}
+                        />
                       </SandboxTabsContent>
                     </SandboxTabs>
                   </SandboxLayout>

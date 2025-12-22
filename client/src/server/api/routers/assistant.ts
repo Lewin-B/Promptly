@@ -86,6 +86,8 @@ export const assistantRouter = createTRPCRouter({
       const text = extractText(response);
       const parsed = tryParseJson(text);
 
+      console.log("Parsed: ", parsed);
+
       const files =
         parsed && Array.isArray(parsed.files)
           ? parsed.files
