@@ -1,9 +1,12 @@
 "use client";
 
-import { use, useMemo } from "react";
+import { use, useEffect, useMemo, useRef, useState } from "react";
 import { categoryEnum } from "~/server/db/schema";
 import { api } from "~/trpc/react";
 import CodeRunner from "./_components/code-runner";
+import { SandboxProvider } from "~/components/ui/sandbox";
+import ProblemDescription from "./_components/problem-description";
+import type { SandpackFiles } from "@codesandbox/sandpack-react";
 
 export default function ProblemDetailPage({
   params,
@@ -27,17 +30,85 @@ export default function ProblemDetailPage({
     { enabled: Boolean(categoryValue) && isProblemIdValid },
   );
 
+  const [initialFiles, setInitialFiles] = useState<SandpackFiles | null>(null);
+  const lastProblemIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (lastProblemIdRef.current !== problemId) {
+      setInitialFiles(null);
+      lastProblemIdRef.current = problemId;
+    }
+  }, [problemId]);
+
+  useEffect(() => {
+    if (!data?.starterCode || !isProblemIdValid) return;
+    if (initialFiles) return;
+    const hydratedFiles = Object.fromEntries(
+      Object.entries(data.starterCode).map(([filePath, file]) => {
+        const localStorageKey = `code-${problemId}-${filePath}`;
+        const savedCode = localStorage.getItem(localStorageKey);
+        if (!savedCode) return [filePath, file];
+        const parsedCode = JSON.parse(savedCode);
+        console.log("file: ", filePath, localStorageKey);
+        try {
+          if (typeof savedCode !== "string") return [filePath, file];
+          return [filePath, parsedCode];
+        } catch (error) {
+          console.warn("Failed to parse saved code", error);
+          return [filePath, file];
+        }
+      }),
+    );
+
+    console.log("hydratedFiles: ", hydratedFiles);
+    setInitialFiles(hydratedFiles);
+  }, [data?.starterCode, initialFiles, isProblemIdValid, problemId]);
+
+  if (!initialFiles) {
+    return (
+      <ProblemDescription
+        category={category}
+        categoryValue={categoryValue}
+        isProblemIdValid={isProblemIdValid}
+        isLoading={isLoading}
+        error={error ?? null}
+        data={data}
+      />
+    );
+  }
+
   return (
-    <CodeRunner
-      starterFiles={data?.starterCode ?? {}}
-      problemDescription={{
-        category,
-        categoryValue,
-        isProblemIdValid,
-        isLoading,
-        error: error ?? null,
-        data,
+    <SandboxProvider
+      template="react"
+      files={initialFiles}
+      options={{
+        visibleFiles: ["/App.js", "/Shipment.js"],
+        activeFile: "/Shipment.js",
+        autoReload: true,
+        autorun: true,
       }}
-    />
+      customSetup={{
+        dependencies: {
+          "react-window": "2.2.3",
+          "@testing-library/dom": "9.3.4",
+          zod: "4.2.1",
+          "@testing-library/react": "16.3.1",
+          "@testing-library/user-event": "14.6.1",
+        },
+      }}
+    >
+      <CodeRunner
+        problemId={problemId}
+        starterFiles={initialFiles}
+        problemDescription={{
+          category,
+          categoryValue,
+          isProblemIdValid,
+          isLoading,
+          error: error ?? null,
+          data,
+        }}
+      />
+    </SandboxProvider>
   );
 }
