@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, use } from "react";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -20,6 +20,8 @@ const difficultyStyles: Record<string, string> = {
   Hard: "border-rose-200 bg-rose-50 text-rose-700",
 };
 
+const dateFormatter = new Intl.DateTimeFormat("en-US", { timeZone: "UTC" });
+
 function getSummary(text?: string) {
   if (!text) return "No description provided yet.";
   if (text.length <= 140) return text;
@@ -29,14 +31,15 @@ function getSummary(text?: string) {
 export default function ProblemsByCategoryPage({
   params,
 }: {
-  params: { category: string };
+  params: Promise<{ category: string }>;
 }) {
+  const { category } = use(params);
   const categoryValue = useMemo(() => {
     const match = categoryEnum.enumValues.find(
-      (value) => value.toLowerCase() === params.category.toLowerCase(),
+      (value) => value.toLowerCase() === category.toLowerCase(),
     );
     return match ?? null;
-  }, [params.category]);
+  }, [category]);
 
   const { data, isLoading, error } = api.problem.getProblems.useQuery(
     categoryValue ? { category: categoryValue } : undefined,
@@ -104,9 +107,7 @@ export default function ProblemsByCategoryPage({
                 <Card className="border-slate-200/70 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
                   <CardHeader className="gap-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <CardTitle className="text-lg">
-                        {problem.name}
-                      </CardTitle>
+                      <CardTitle className="text-lg">{problem.name}</CardTitle>
                       <Badge
                         variant="outline"
                         className={
@@ -126,7 +127,7 @@ export default function ProblemsByCategoryPage({
                       <span>Category: {problem.category}</span>
                       <span>•</span>
                       <span>
-                        Updated {problem.updatedAt.toLocaleDateString()}
+                        Updated {dateFormatter.format(problem.updatedAt)}
                       </span>
                     </div>
                   </CardContent>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { use, useMemo } from "react";
 import { categoryEnum } from "~/server/db/schema";
 import { api } from "~/trpc/react";
 import CodeRunner from "./_components/code-runner";
@@ -8,17 +8,18 @@ import CodeRunner from "./_components/code-runner";
 export default function ProblemDetailPage({
   params,
 }: {
-  params: { category: string; problemId: string };
+  params: Promise<{ category: string; problemId: string }>;
 }) {
+  const { category, problemId: problemIdParam } = use(params);
   const categoryValue = useMemo(() => {
     return (
       categoryEnum.enumValues.find(
-        (value) => value.toLowerCase() === params.category.toLowerCase(),
+        (value) => value.toLowerCase() === category.toLowerCase(),
       ) ?? null
     );
-  }, [params.category]);
+  }, [category]);
 
-  const problemId = useMemo(() => Number(params.problemId), [params.problemId]);
+  const problemId = useMemo(() => Number(problemIdParam), [problemIdParam]);
   const isProblemIdValid = Number.isFinite(problemId);
 
   const { data, isLoading, error } = api.problem.getProblem.useQuery(
@@ -30,7 +31,7 @@ export default function ProblemDetailPage({
     <CodeRunner
       starterFiles={data?.starterCode ?? {}}
       problemDescription={{
-        category: params.category,
+        category,
         categoryValue,
         isProblemIdValid,
         isLoading,
