@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useSandpack } from "@codesandbox/sandpack-react";
 import { Loader2, Send, Sparkles } from "lucide-react";
@@ -29,22 +29,31 @@ const MODEL_OPTIONS: Array<{ value: AiModel; label: string }> = [
 ];
 
 type AssistantSidebarProps = {
+  problemId: number;
   problemDescription: ProblemDescriptionProps;
 };
 
 export function AssistantSidebar({
+  problemId,
   problemDescription,
 }: AssistantSidebarProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([
+  const defaultMessages: ChatMessage[] = [
     {
       role: "assistant",
       content:
         "Hi! Tell me what to build or refactor. I can edit files in the sandbox for you.",
     },
-  ]);
+  ];
+  const [messages, setMessages] = useState<ChatMessage[]>(defaultMessages);
   const [input, setInput] = useState("");
   const [lastApplied, setLastApplied] = useState<string[]>([]);
   const [model, setModel] = useState<AiModel>("qwen3-coder");
+  const hasLoadedRef = useRef(false);
+  const skipSaveRef = useRef(false);
+
+  const storageKey = useMemo(() => {
+    return `assistant-chat:${problemDescription.category}:${problemId}`;
+  }, [problemDescription.category, problemId]);
 
   const { sandpack } = useSandpack();
   const { mutateAsync, isPending } = api.assistant.assist.useMutation();
@@ -98,8 +107,43 @@ export function AssistantSidebar({
     setLastApplied(files.map((file) => file.path));
   };
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem(storageKey);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored) as ChatMessage[];
+        if (Array.isArray(parsed)) {
+          setMessages(parsed);
+          skipSaveRef.current = true;
+        }
+      } catch (error) {
+        window.localStorage.removeItem(storageKey);
+        console.error(error);
+      }
+    }
+    hasLoadedRef.current = true;
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (!hasLoadedRef.current || typeof window === "undefined") return;
+    if (skipSaveRef.current) {
+      skipSaveRef.current = false;
+      return;
+    }
+    window.localStorage.setItem(storageKey, JSON.stringify(messages));
+  }, [messages, storageKey]);
+
+  const handleClearHistory = () => {
+    setMessages(defaultMessages);
+    setLastApplied([]);
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(storageKey);
+    }
+  };
+
   return (
-    <div className="flex h-full w-full flex-col gap-3 overflow-hidden">
+    <div className="flex h-full w-full flex-col gap-3 overflow-scroll">
       <Tabs defaultValue="problem" className="flex h-full flex-col gap-3">
         <div className="flex items-center gap-2 text-sm font-semibold">
           <Sparkles className="text-primary h-4 w-4" />
@@ -126,6 +170,20 @@ export function AssistantSidebar({
           value="assistant"
           className="flex h-full flex-1 flex-col gap-3"
         >
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground text-xs uppercase">
+              Chat history
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleClearHistory}
+              disabled={messages.length <= 1}
+            >
+              Clear chat
+            </Button>
+          </div>
           <div className="bg-background flex-1 space-y-3 overflow-y-auto rounded-lg border p-3 text-sm shadow-inner">
             {messages.map((message, index) => (
               <div

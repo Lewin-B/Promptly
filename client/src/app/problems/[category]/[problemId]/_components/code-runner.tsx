@@ -84,7 +84,10 @@ export default function CodeRunner({
           className="min-w-[16rem]"
         >
           <div className="bg-muted/40 h-full w-full overflow-hidden border-r p-3 md:p-4">
-            <AssistantSidebar problemDescription={problemDescription} />
+            <AssistantSidebar
+              problemId={problemId}
+              problemDescription={problemDescription}
+            />
           </div>
         </ResizablePanel>
         <ResizableHandle withHandle />
