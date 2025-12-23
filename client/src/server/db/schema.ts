@@ -121,6 +121,7 @@ export const Problem = createTable("problem", {
   category: categoryEnum("category").notNull(),
   description: jsonb("description").$type<ProblemContent>().notNull(),
   starterCode: jsonb("starter_code").$type<CodeContent>().notNull(),
+  visibleFiles: text("visible_files").array().default(["/App.js"]),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

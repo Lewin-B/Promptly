@@ -53,6 +53,11 @@ export default function CodeRunner({
   }, [files, activeFile, problemId]);
 
   const handleTestsComplete = useCallback((specs: Record<string, unknown>) => {
+    if (!specs) {
+      setTestsPassing(false);
+      return;
+    }
+    console.log("crash");
     const collectStatuses = (node: unknown): string[] => {
       if (!node || typeof node !== "object") return [];
       const typedNode = node as {

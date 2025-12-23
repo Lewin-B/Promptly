@@ -88,6 +88,10 @@ export const assistantRouter = createTRPCRouter({
 
       console.log("Parsed: ", parsed);
 
+      if (!parsed) {
+        return { reply: "Error generating a response", files: [] };
+      }
+
       const files =
         parsed && Array.isArray(parsed.files)
           ? parsed.files
@@ -134,7 +138,8 @@ function tryParseJson(text: unknown) {
 
   try {
     return JSON.parse(candidate);
-  } catch {
+  } catch (err) {
+    console.log("Failed to parse: ", err);
     return null;
   }
 }

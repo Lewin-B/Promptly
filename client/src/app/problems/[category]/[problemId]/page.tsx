@@ -82,19 +82,11 @@ export default function ProblemDetailPage({
       template="react"
       files={initialFiles}
       options={{
-        visibleFiles: ["/App.js", "/Shipment.js"],
+        visibleFiles: data?.visibleFiles ?? ["/App.js"],
         activeFile: "/Shipment.js",
         autoReload: true,
         autorun: true,
-      }}
-      customSetup={{
-        dependencies: {
-          "react-window": "2.2.3",
-          "@testing-library/dom": "9.3.4",
-          zod: "4.2.1",
-          "@testing-library/react": "16.3.1",
-          "@testing-library/user-event": "14.6.1",
-        },
+        externalResources: ["https://cdn.tailwindcss.com"],
       }}
     >
       <CodeRunner
