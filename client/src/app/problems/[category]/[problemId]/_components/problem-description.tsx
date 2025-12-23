@@ -103,7 +103,7 @@ export default function ProblemDescription({
                 </span>
                 <span>
                   AI Interaction:{" "}
-                  {data.description?.aiConstraints ?? "Not specified"}
+                  {data.description?.aiConstraints ?? "Not specified"} Tokens
                 </span>
               </div>
             </div>

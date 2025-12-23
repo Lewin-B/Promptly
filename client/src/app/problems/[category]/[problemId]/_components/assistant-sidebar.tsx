@@ -27,15 +27,12 @@ const MODEL_OPTIONS: Array<{ value: AiModel; label: string }> = [
   { value: "deepseek", label: "Deepseek V3" },
   { value: "gpt-oss", label: "GPT-OSS-120b" },
 ];
-const TOKEN_THRESHOLD = 20000;
 
 type AssistantSidebarProps = {
-  problemId: number;
   problemDescription: ProblemDescriptionProps;
 };
 
 export function AssistantSidebar({
-  problemId,
   problemDescription,
 }: AssistantSidebarProps) {
   const defaultMessages: ChatMessage[] = [
@@ -50,6 +47,13 @@ export function AssistantSidebar({
   const [lastApplied, setLastApplied] = useState<string[]>([]);
   const [model, setModel] = useState<AiModel>("qwen3-coder");
   const [tokensUsed, setTokensUsed] = useState(0);
+  const TOKEN_THRESHOLD = parseInt(
+    (problemDescription.data?.description?.aiConstraints ?? "").replace(
+      ",",
+      "",
+    ),
+    10,
+  );
 
   // const storageKey = useMemo(() => {
   //   return `assistant-chat:${problemDescription.category}:${problemId}`;
