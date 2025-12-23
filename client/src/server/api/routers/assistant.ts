@@ -83,10 +83,11 @@ export const assistantRouter = createTRPCRouter({
         temperature: 0.4,
       });
 
+      console.log("response: ", response);
+
+      const tokens = response.usage?.total_tokens;
       const text = extractText(response);
       const parsed = tryParseJson(text);
-
-      console.log("Parsed: ", parsed);
 
       if (!parsed) {
         return { reply: "Error generating a response", files: [] };
@@ -107,7 +108,7 @@ export const assistantRouter = createTRPCRouter({
           ? parsed.reply.trim()
           : text?.trim() || "I could not generate a response.";
 
-      return { reply, files };
+      return { reply, files, tokens_used: tokens };
     }),
 });
 

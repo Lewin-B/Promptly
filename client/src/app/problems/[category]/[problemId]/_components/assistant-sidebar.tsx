@@ -27,6 +27,7 @@ const MODEL_OPTIONS: Array<{ value: AiModel; label: string }> = [
   { value: "deepseek", label: "Deepseek V3" },
   { value: "gpt-oss", label: "GPT-OSS-120b" },
 ];
+const TOKEN_THRESHOLD = 20000;
 
 type AssistantSidebarProps = {
   problemId: number;
@@ -48,18 +49,19 @@ export function AssistantSidebar({
   const [input, setInput] = useState("");
   const [lastApplied, setLastApplied] = useState<string[]>([]);
   const [model, setModel] = useState<AiModel>("qwen3-coder");
-  const hasLoadedRef = useRef(false);
-  const skipSaveRef = useRef(false);
+  const [tokensUsed, setTokensUsed] = useState(0);
 
-  const storageKey = useMemo(() => {
-    return `assistant-chat:${problemDescription.category}:${problemId}`;
-  }, [problemDescription.category, problemId]);
+  // const storageKey = useMemo(() => {
+  //   return `assistant-chat:${problemDescription.category}:${problemId}`;
+  // }, [problemDescription.category, problemId]);
 
   const { sandpack } = useSandpack();
   const { mutateAsync, isPending } = api.assistant.assist.useMutation();
+  const isTokenLimitReached = tokensUsed >= TOKEN_THRESHOLD;
 
   const handleSend = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (isTokenLimitReached) return;
     const prompt = input.trim();
     if (!prompt) return;
 
@@ -76,6 +78,12 @@ export function AssistantSidebar({
       });
 
       applyFileUpdates(result.files);
+      if (
+        typeof result.tokens_used === "number" &&
+        Number.isFinite(result.tokens_used)
+      ) {
+        setTokensUsed((prev) => prev + result.tokens_used);
+      }
 
       setMessages([
         ...nextMessages,
@@ -174,6 +182,16 @@ export function AssistantSidebar({
             <span className="text-muted-foreground text-xs uppercase">
               Chat history
             </span>
+            <span
+              className={`text-xs ${
+                isTokenLimitReached
+                  ? "text-destructive"
+                  : "text-muted-foreground"
+              }`}
+            >
+              Tokens: {tokensUsed.toLocaleString()} /{" "}
+              {TOKEN_THRESHOLD.toLocaleString()}
+            </span>
             <Button
               type="button"
               variant="outline"
@@ -206,6 +224,11 @@ export function AssistantSidebar({
               Updated files: {lastApplied.join(", ")}
             </div>
           )}
+          {isTokenLimitReached && (
+            <div className="text-destructive bg-destructive/10 rounded-md border border-dashed p-2 text-xs">
+              Token limit reached. Clear chat to reset the counter.
+            </div>
+          )}
 
           <form onSubmit={handleSend} className="flex flex-col gap-2">
             <label className="text-muted-foreground text-xs font-medium">
@@ -217,7 +240,7 @@ export function AssistantSidebar({
                 className="border-input bg-background ring-offset-background focus-visible:ring-ring h-9 rounded-md border px-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                 value={model}
                 onChange={(event) => setModel(event.target.value as AiModel)}
-                disabled={isPending}
+                disabled={isPending || isTokenLimitReached}
               >
                 {MODEL_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -230,9 +253,9 @@ export function AssistantSidebar({
               value={input}
               onChange={(event) => setInput(event.target.value)}
               placeholder="Add a button, fix the state bug, improve styles..."
-              disabled={isPending}
+              disabled={isPending || isTokenLimitReached}
             />
-            <Button type="submit" disabled={isPending}>
+            <Button type="submit" disabled={isPending || isTokenLimitReached}>
               {isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

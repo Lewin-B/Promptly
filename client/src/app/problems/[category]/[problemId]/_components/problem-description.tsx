@@ -98,7 +98,8 @@ export default function ProblemDescription({
               </div>
               <div className="flex flex-wrap gap-4 text-sm text-slate-600">
                 <span>
-                  Time Limit: {data.description?.timeLimit ?? "Not specified"}
+                  Time Limit: {data.description?.timeLimit ?? "Not specified"}{" "}
+                  Minutes
                 </span>
                 <span>
                   AI Interaction:{" "}
