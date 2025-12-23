@@ -22,7 +22,7 @@ export default function Hero() {
           </Button>
         </div>
         <p className="text-foreground/50 text-xs font-medium">
-          No credit card. Keep your current stack. Ship smarter in minutes.
+          So that everyone can be a 10x engineer
         </p>
       </div>
     </section>

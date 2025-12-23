@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useState } from "react";
 
 import { useSandpack } from "@codesandbox/sandpack-react";
 import { Loader2, Send, Sparkles } from "lucide-react";
@@ -69,7 +69,10 @@ export function AssistantSidebar({
     const prompt = input.trim();
     if (!prompt) return;
 
-    const nextMessages = [...messages, { role: "user", content: prompt }];
+    const nextMessages = [
+      ...messages,
+      { role: "user", content: prompt },
+    ] as ChatMessage[];
     setMessages(nextMessages);
     setInput("");
     setLastApplied([]);

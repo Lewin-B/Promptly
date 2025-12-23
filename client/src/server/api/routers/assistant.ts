@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import Together from "together-ai";
+import type { ChatCompletion } from "together-ai/resources/chat/completions";
 import { z } from "zod";
 
 import { env } from "~/env";
@@ -70,6 +71,7 @@ export const assistantRouter = createTRPCRouter({
 
       const response = await together.chat.completions.create({
         model: togetherModel,
+        stream: false,
         messages: [
           {
             role: "system",
@@ -148,9 +150,10 @@ function tryParseJson(text: unknown) {
 function extractText(
   response:
     | string
+    | ChatCompletion
     | {
         choices?: Array<{
-          message?: { content?: string | Array<{ text?: string }> };
+          message?: { content?: string | Array<{ text?: string }> | null };
         }>;
       },
 ) {
