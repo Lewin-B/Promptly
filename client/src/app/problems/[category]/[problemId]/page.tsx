@@ -45,22 +45,21 @@ export default function ProblemDetailPage({
     if (initialFiles) return;
     const hydratedFiles = Object.fromEntries(
       Object.entries(data.starterCode).map(([filePath, file]) => {
-        const localStorageKey = `code-${problemId}-${filePath}`;
-        const savedCode = localStorage.getItem(localStorageKey);
-        if (!savedCode) return [filePath, file];
-        const parsedCode = JSON.parse(savedCode);
-        console.log("file: ", filePath, localStorageKey);
-        try {
-          if (typeof savedCode !== "string") return [filePath, file];
-          return [filePath, parsedCode];
-        } catch (error) {
-          console.warn("Failed to parse saved code", error);
-          return [filePath, file];
-        }
+        // const localStorageKey = `code-${problemId}-${filePath}`;
+        // const savedCode = localStorage.getItem(localStorageKey);
+        // if (!savedCode) return [filePath, file];
+        // const parsedCode = JSON.parse(savedCode);
+        // console.log(filePath, parsedCode, typeof parsedCode);
+        // try {
+        //   if (typeof savedCode !== "string") return [filePath, file];
+        //   return [filePath, parsedCode];
+        // } catch (error) {
+        //   console.warn("Failed to parse saved code", error);
+        //   return [filePath, file];
+        // }
+        return [filePath, file];
       }),
     );
-
-    console.log("hydratedFiles: ", hydratedFiles);
     setInitialFiles(hydratedFiles);
   }, [data?.starterCode, initialFiles, isProblemIdValid, problemId]);
 

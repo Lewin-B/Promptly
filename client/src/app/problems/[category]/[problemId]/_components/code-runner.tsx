@@ -24,8 +24,6 @@ import {
   ResizablePanelGroup,
 } from "~/components/ui/resizable";
 
-import { useSandpack } from "@codesandbox/sandpack-react";
-
 export default function CodeRunner({
   problemId,
   problemDescription,
@@ -35,22 +33,63 @@ export default function CodeRunner({
   problemDescription: ProblemDescriptionProps;
 }) {
   const [testsPassing, setTestsPassing] = useState(false);
-  const { sandpack } = useSandpack();
-  const { files, activeFile } = sandpack;
-  const didMountRef = useRef(false);
+  const [timeLeft, setTimeLeft] = useState(15 * 60);
+  const sessionEndRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!didMountRef.current) {
-      didMountRef.current = true;
-      return;
-    }
-    const localStorageCodeKey = `code-${problemId}-${activeFile}`;
-    localStorage.setItem(
-      localStorageCodeKey,
-      JSON.stringify(files[activeFile]?.code),
+    const now = Date.now();
+    const endTime = now + 15 * 60 * 1000;
+    sessionEndRef.current = endTime;
+    setTimeLeft(Math.max(0, Math.ceil((endTime - now) / 1000)));
+
+    const timeoutId = window.setTimeout(
+      () => {
+        // const storagePrefix = `code-${problemId}-`;
+        // for (let i = localStorage.length - 1; i >= 0; i -= 1) {
+        //   const key = localStorage.key(i);
+        //   if (key && key.startsWith(storagePrefix)) {
+        //     localStorage.removeItem(key);
+        //   }
+        // }
+        // window.alert(
+        //   "Your 15-minute session has ended. Saved code for this problem was cleared.",
+        // );
+        window.alert("Your 15-minute session has ended.");
+      },
+      15 * 60 * 1000,
     );
-    console.log("set: ", localStorageCodeKey);
-  }, [files, activeFile, problemId]);
+
+    const intervalId = window.setInterval(() => {
+      const currentEnd = sessionEndRef.current;
+      if (!currentEnd) return;
+      const secondsLeft = Math.max(
+        0,
+        Math.ceil((currentEnd - Date.now()) / 1000),
+      );
+      setTimeLeft(secondsLeft);
+      if (secondsLeft === 0) {
+        window.clearInterval(intervalId);
+      }
+    }, 1000);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.clearInterval(intervalId);
+    };
+  }, [problemId]);
+
+  // useEffect(() => {
+  //   if (!didMountRef.current) {
+  //     didMountRef.current = true;
+  //     return;
+  //   }
+  //   const localStorageCodeKey = `code-${problemId}-${activeFile}`;
+  //   localStorage.setItem(
+  //     localStorageCodeKey,
+  //     JSON.stringify(files[activeFile]?.code),
+  //   );
+  //   console.log("set: ", localStorageCodeKey);
+  // }, [files, activeFile, problemId]);
 
   const handleTestsComplete = useCallback((specs: Record<string, unknown>) => {
     if (!specs) {
@@ -149,6 +188,11 @@ export default function CodeRunner({
                           <TestTube className="h-4 w-4" /> Tests
                         </SandboxTabsTrigger>
                       </div>
+                      <div className="text-muted-foreground text-[11px] font-semibold tracking-[0.22em] uppercase">
+                        Session{" "}
+                        {`${String(Math.floor(timeLeft / 60)).padStart(2, "0")}:${String(timeLeft % 60).padStart(2, "0")}`}
+                      </div>
+                      <div className="flex flex-1" />
                     </SandboxTabsList>
                     <SandboxTabsContent value="code" className="bg-white">
                       <SandboxCodeEditor

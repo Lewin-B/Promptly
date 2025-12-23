@@ -107,39 +107,39 @@ export function AssistantSidebar({
     setLastApplied(files.map((file) => file.path));
   };
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem(storageKey);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored) as ChatMessage[];
-        if (Array.isArray(parsed)) {
-          setMessages(parsed);
-          skipSaveRef.current = true;
-        }
-      } catch (error) {
-        window.localStorage.removeItem(storageKey);
-        console.error(error);
-      }
-    }
-    hasLoadedRef.current = true;
-  }, [storageKey]);
+  // useEffect(() => {
+  //   if (typeof window === "undefined") return;
+  //   // const stored = window.localStorage.getItem(storageKey);
+  //   // if (stored) {
+  //   //   try {
+  //   //     const parsed = JSON.parse(stored) as ChatMessage[];
+  //   //     if (Array.isArray(parsed)) {
+  //   //       setMessages(parsed);
+  //   //       skipSaveRef.current = true;
+  //   //     }
+  //   //   } catch (error) {
+  //   //     window.localStorage.removeItem(storageKey);
+  //   //     console.error(error);
+  //   //   }
+  //   // }
+  //   hasLoadedRef.current = true;
+  // }, [storageKey]);
 
-  useEffect(() => {
-    if (!hasLoadedRef.current || typeof window === "undefined") return;
-    if (skipSaveRef.current) {
-      skipSaveRef.current = false;
-      return;
-    }
-    window.localStorage.setItem(storageKey, JSON.stringify(messages));
-  }, [messages, storageKey]);
+  // useEffect(() => {
+  //   if (!hasLoadedRef.current || typeof window === "undefined") return;
+  //   if (skipSaveRef.current) {
+  //     skipSaveRef.current = false;
+  //     return;
+  //   }
+  //   // window.localStorage.setItem(storageKey, JSON.stringify(messages));
+  // }, [messages, storageKey]);
 
   const handleClearHistory = () => {
     setMessages(defaultMessages);
     setLastApplied([]);
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(storageKey);
-    }
+    // if (typeof window !== "undefined") {
+    //   window.localStorage.removeItem(storageKey);
+    // }
   };
 
   return (
