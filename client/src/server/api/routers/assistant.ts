@@ -94,6 +94,7 @@ export const assistantRouter = createTRPCRouter({
 
       const tokens = response.usage?.total_tokens;
       const text = extractText(response);
+      console.log("Text: ", text);
       const parsed = tryParseJson(text);
 
       if (!parsed) {
