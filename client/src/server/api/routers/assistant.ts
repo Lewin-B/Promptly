@@ -43,6 +43,11 @@ You are an expert AI coding partner helping inside a Sandpack React playground.
 - Do not wrap responses in Markdown or add commentary outside JSON.
 `.trim();
 
+type Candidate = {
+  reply: string;
+  files: FileUpdate[];
+};
+
 type FileUpdate = {
   path: string;
   code: string;
@@ -140,7 +145,7 @@ function tryParseJson(text: unknown) {
   const candidate = match ? match[0] : text;
 
   try {
-    return JSON.parse(candidate);
+    return JSON.parse(candidate) as Candidate;
   } catch (err) {
     console.log("Failed to parse: ", err);
     return null;

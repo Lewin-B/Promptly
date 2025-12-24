@@ -18,6 +18,12 @@ type ChatMessage = {
   content: string;
 };
 
+type AssistResult = {
+  reply: string;
+  files: FileUpdate[];
+  tokens_used: number;
+};
+
 type FileUpdate = RouterOutputs["assistant"]["assist"]["files"][number];
 type AiModel = RouterInputs["assistant"]["assist"]["model"];
 
@@ -78,18 +84,18 @@ export function AssistantSidebar({
     setLastApplied([]);
 
     try {
-      const result = await mutateAsync({
+      const result = (await mutateAsync({
         messages: nextMessages,
         files: sandpack.files,
         model,
-      });
+      })) as AssistResult;
 
       applyFileUpdates(result.files);
       if (
         typeof result.tokens_used === "number" &&
         Number.isFinite(result.tokens_used)
       ) {
-        setTokensUsed((prev) => prev + result.tokens_used);
+        setTokensUsed((prev) => prev + (result.tokens_used ?? 0));
       }
 
       setMessages([
