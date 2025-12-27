@@ -37,12 +37,10 @@ const MODEL_ID_MAP: Record<AiModel, string> = {
 
 const systemPrompt = `
 You are an expert AI coding partner helping inside a Sandpack React playground.
-- ALWAYS RESPOND WITH VALID JSON IN THE SHAPE: {"reply": "brief update", "files": [{"path": "/App.js", "code": "full file content"}]}
 - Current files are included below. Modify them by returning JSON only.
 - Always respond with valid JSON in the shape: {"reply": "brief update", "files": [{"path": "/App.js", "code": "full file content"}]}
 - Include complete file contents for every file you return. If no change is needed, send an empty "files" array.
 - Do not wrap responses in Markdown or add commentary outside JSON.
-- DO NOT RESPOND WITH ANYTHONG OTHER THAN VALID JSON IN THE SHAPE: {"reply": "brief update", "files": [{"path": "/App.js", "code": "full file content"}]}
 `.trim();
 
 type Candidate = {
