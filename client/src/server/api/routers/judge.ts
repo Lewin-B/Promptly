@@ -24,7 +24,6 @@ export const judgeRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      console.log("Files: ", input.files);
       const normalizedFiles = normalizeSandpackFiles(input.files);
       const tarArchive = await buildTarFromFiles(normalizedFiles);
 
