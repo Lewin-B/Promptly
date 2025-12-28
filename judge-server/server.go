@@ -72,7 +72,7 @@ func main() {
 	a2aServerAddress := startJudgeAgentServer()
 
 	remoteAgent, err := remoteagent.NewA2A(remoteagent.A2AConfig{
-		Name:            "A2A Weather agent",
+		Name:            "A2A Judge Agent",
 		AgentCardSource: a2aServerAddress,
 	})
 	if err != nil {
