@@ -71,6 +71,9 @@ func DeployContainer(ctx context.Context, req *mcp.CallToolRequest, input Input)
 	if _, err := tarWriter.Write(dockerfileContents); err != nil {
 		panic(err)
 	}
+	if err := addDirectoryToTar(tarWriter, "./react-project", "react-project"); err != nil {
+		panic(err)
+	}
 	if err := tarWriter.Close(); err != nil {
 		panic(err)
 	}
@@ -119,9 +122,7 @@ func DeployContainer(ctx context.Context, req *mcp.CallToolRequest, input Input)
 	if err != nil {
 		panic(err)
 	}
-	defer out.Close()
 
-	fmt.Println("After Logs check")
 	var stdoutBuf, stderrBuf bytes.Buffer
 	_, err = stdcopy.StdCopy(&stdoutBuf, &stderrBuf, out)
 	if err != nil {
@@ -129,8 +130,8 @@ func DeployContainer(ctx context.Context, req *mcp.CallToolRequest, input Input)
 	}
 
 	return nil, Output{
-		Stdout:        stdoutBuf.String(),
-		Stderr:        stderrBuf.String(),
+		// Stdout:        stdoutBuf.String(),
+		// Stderr:        stderrBuf.String(),
 		ContainerName: containerName,
 		ContainerID:   resp.ID,
 		ImageName:     imageName,
