@@ -30,6 +30,7 @@ func Local(ctx context.Context) mcp.Transport {
 	mcp.AddTool(server, &mcp.Tool{Name: "shutdown_container", Description: "Shuts down a container by ID or name"}, ShutdownContainer)
 	mcp.AddTool(server, &mcp.Tool{Name: "list_local_paths", Description: "Lists entries in a local filesystem directory"}, ListLocalPaths)
 	mcp.AddTool(server, &mcp.Tool{Name: "read_local_file", Description: "Reads a local file path with an optional byte limit"}, ReadLocalFile)
+	mcp.AddTool(server, &mcp.Tool{Name: "print_tar_contents", Description: "Decodes the Base64TarBytes and prints the contents of the archive"}, ReadTarArchive)
 	_, err := server.Connect(ctx, serverTransport, nil)
 	if err != nil {
 		log.Fatal(err)

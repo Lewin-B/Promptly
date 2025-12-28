@@ -15,7 +15,10 @@
 package mcptransport
 
 import (
+	"archive/tar"
+	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -134,4 +137,54 @@ func ReadLocalFile(ctx context.Context, req *mcp.CallToolRequest, input ReadFile
 		Size:      info.Size(),
 		Truncated: info.Size() > int64(maxBytes),
 	}, nil
+}
+
+type ReadTarInput struct {
+	Base64TarFile string
+}
+
+type ReadTarOutput struct {
+	FileSystem map[string]string
+}
+
+func ReadTarArchive(ctx context.Context, req *mcp.CallToolRequest, input ReadTarInput) (*mcp.CallToolResult, ReadTarOutput, error) {
+	decodedTarBytes, err := base64.StdEncoding.DecodeString(input.Base64TarFile)
+
+	bytesReader := bytes.NewReader(decodedTarBytes)
+
+	tr := tar.NewReader(bytesReader)
+
+	var files map[string]string
+
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break // End of archive
+		}
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Printf("File: %s (Size: %d bytes)\n", header.Name, header.Size)
+
+		// 4. Read the content of the current file
+		// The tar.Reader itself acts as an io.Reader for the current file entry
+		content, err := io.ReadAll(tr)
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println("File Content: ", content)
+		files[string(header.Name)] = string(content)
+
+	}
+
+	if err != nil {
+		panic(err)
+	}
+
+	return nil, ReadTarOutput{
+		FileSystem: files,
+	}, nil
+
 }
