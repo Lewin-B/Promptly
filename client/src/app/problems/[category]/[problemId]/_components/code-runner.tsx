@@ -13,7 +13,7 @@ import {
 
 import { CheckCircle2, Files, TestTube, Wallpaper } from "lucide-react";
 
-import type { SandpackFiles } from "@codesandbox/sandpack-react";
+import { useSandpack, type SandpackFiles } from "@codesandbox/sandpack-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AssistantSidebar } from "./assistant-sidebar";
@@ -23,6 +23,8 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "~/components/ui/resizable";
+import { Button } from "~/components/ui/button";
+import { api } from "~/trpc/react";
 
 export default function CodeRunner({
   problemId,
@@ -34,7 +36,11 @@ export default function CodeRunner({
 }) {
   const [testsPassing, setTestsPassing] = useState(false);
   const [timeLeft, setTimeLeft] = useState(15 * 60);
+  const [submitMessage, setSubmitMessage] = useState<string | null>(null);
   const sessionEndRef = useRef<number | null>(null);
+  const { sandpack } = useSandpack();
+  const { mutateAsync: submitSolution, isPending: isSubmitting } =
+    api.judge.submit.useMutation();
 
   useEffect(() => {
     const now = Date.now();
@@ -118,6 +124,17 @@ export default function CodeRunner({
     );
   }, []);
 
+  const handleSubmit = useCallback(async () => {
+    setSubmitMessage(null);
+    try {
+      await submitSolution({ problemId, files: sandpack.files });
+      setSubmitMessage("Submission sent");
+    } catch (error) {
+      console.error(error);
+      setSubmitMessage("Submission failed");
+    }
+  }, [problemId, sandpack.files, submitSolution]);
+
   return (
     <div className="flex h-screen w-screen justify-center overflow-hidden">
       <ResizablePanelGroup direction="horizontal" className="h-screen w-full">
@@ -185,11 +202,25 @@ export default function CodeRunner({
                           <TestTube className="h-4 w-4" /> Tests
                         </SandboxTabsTrigger>
                       </div>
-                      <div className="text-muted-foreground text-[11px] font-semibold tracking-[0.22em] uppercase">
-                        Session{" "}
-                        {`${String(Math.floor(timeLeft / 60)).padStart(2, "0")}:${String(timeLeft % 60).padStart(2, "0")}`}
+                      <div className="ml-auto flex items-center gap-3">
+                        {submitMessage && (
+                          <span className="text-muted-foreground text-[11px] font-semibold tracking-[0.18em] uppercase">
+                            {submitMessage}
+                          </span>
+                        )}
+                        <div className="text-muted-foreground text-[11px] font-semibold tracking-[0.22em] uppercase">
+                          Session{" "}
+                          {`${String(Math.floor(timeLeft / 60)).padStart(2, "0")}:${String(timeLeft % 60).padStart(2, "0")}`}
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={handleSubmit}
+                          disabled={isSubmitting}
+                        >
+                          {isSubmitting ? "Submitting..." : "Submit"}
+                        </Button>
                       </div>
-                      <div className="flex flex-1" />
                     </SandboxTabsList>
                     <SandboxTabsContent value="code" className="bg-white">
                       <SandboxCodeEditor
