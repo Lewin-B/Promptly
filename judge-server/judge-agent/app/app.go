@@ -29,7 +29,7 @@ import (
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/mcptoolset"
 
-	"main/mcptransport"
+	"main/judge-agent/mcptransport"
 )
 
 // Run wires up the agent, toolsets, and launcher, then executes the CLI.
@@ -72,4 +72,37 @@ func Run(ctx context.Context, args []string) error {
 	}
 
 	return nil
+}
+
+func NewDockerAgent(ctx context.Context) agent.Agent {
+	model, err := gemini.NewModel(ctx, "gemini-2.5-flash", &genai.ClientConfig{
+		APIKey: os.Getenv("GOOGLE_API_KEY"),
+	})
+	if err != nil {
+		panic(fmt.Errorf("failed to create model: %w", err))
+	}
+
+	transport := mcptransport.Local(ctx)
+
+	mcpToolSet, err := mcptoolset.New(mcptoolset.Config{
+		Transport: transport,
+	})
+	if err != nil {
+		panic(fmt.Errorf("failed to create MCP tool set: %w", err))
+	}
+
+	a, err := llmagent.New(llmagent.Config{
+		Name:        "helper_agent",
+		Model:       model,
+		Description: "Helper agent.",
+		Instruction: "You are a helpful assistant that helps users with various tasks.",
+		Toolsets: []tool.Toolset{
+			mcpToolSet,
+		},
+	})
+	if err != nil {
+		panic(fmt.Errorf("failed to create agent: %w", err))
+	}
+
+	return a
 }
