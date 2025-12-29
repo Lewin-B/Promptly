@@ -69,7 +69,7 @@ export const judgeRouter = createTRPCRouter({
       // const gzippedTar = await gzipAsync(tarArchive);
       const tarArchiveBase64 = tarArchive.toString("base64");
 
-      const response = await fetch("http://127.0.0.1:50432/invoke", {
+      const response = await fetch("http://127.0.0.1:52602/invoke", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -87,8 +87,9 @@ export const judgeRouter = createTRPCRouter({
                 {
                   kind: "text",
                   text:
-                    "Here is a base64-encoded tar archive. Decode it, list all file paths, " +
-                    "and return each file contents as text.\n\n" +
+                    "Please deploy a container that runs the included contents" +
+                    "Input: a base64-encoded tar archive of project.\n" +
+                    "Required: decode the tar, read the contents, create a dockerfile, and deploy a container with the dockerfile.\n\n" +
                     tarArchiveBase64,
                 },
               ],

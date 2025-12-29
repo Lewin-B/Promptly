@@ -71,9 +71,6 @@ func DeployContainer(ctx context.Context, req *mcp.CallToolRequest, input Input)
 	if _, err := tarWriter.Write(dockerfileContents); err != nil {
 		panic(err)
 	}
-	if err := addDirectoryToTar(tarWriter, "./react-project", "react-project"); err != nil {
-		panic(err)
-	}
 	if err := tarWriter.Close(); err != nil {
 		panic(err)
 	}

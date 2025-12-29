@@ -92,16 +92,78 @@ func NewDockerAgent(ctx context.Context) agent.Agent {
 	}
 
 	a, err := llmagent.New(llmagent.Config{
-		Name:        "helper_agent",
+		Name:        "docker_agent",
 		Model:       model,
-		Description: "Helper agent.",
-		Instruction: "You are a helpful assistant that helps users with various tasks.",
+		Description: "Deploys containers using a Dockerfile and a tar archive payload.",
+		Instruction: `You are a Docker container deploying agent your job is to receive a dockerfile
+					  and a tar archive of contents that you will use the dockerfile to deploy the contents
+					  of the tar archive into a container`,
 		Toolsets: []tool.Toolset{
 			mcpToolSet,
 		},
 	})
 	if err != nil {
 		panic(fmt.Errorf("failed to create agent: %w", err))
+	}
+
+	return a
+}
+
+func NewPlannerAgent(ctx context.Context) agent.Agent {
+	model, err := gemini.NewModel(ctx, "gemini-2.5-flash", &genai.ClientConfig{
+		APIKey: os.Getenv("GOOGLE_API_KEY"),
+	})
+	if err != nil {
+		panic(fmt.Errorf("failed to create model: %w", err))
+	}
+
+	transport := mcptransport.Local(ctx)
+
+	mcpToolSet, err := mcptoolset.New(mcptoolset.Config{
+		Transport: transport,
+	})
+	if err != nil {
+		panic(fmt.Errorf("failed to create MCP tool set: %w", err))
+	}
+
+	a, err := llmagent.New(llmagent.Config{
+		Name:        "planner_agent",
+		Model:       model,
+		Description: "Generates Dockerfiles for a provided directory or project contents.",
+		Instruction: `You are a Planning agent your job is to receive the contents 
+					  of a directory and create a dockerfile to deploy a container
+					  that runs these contents`,
+		Toolsets: []tool.Toolset{
+			mcpToolSet,
+		},
+	})
+	if err != nil {
+		panic(fmt.Errorf("failed to create agent: %w", err))
+	}
+
+	return a
+}
+
+func NewOrchestratorAgent(ctx context.Context, subAgents ...agent.Agent) agent.Agent {
+	model, err := gemini.NewModel(ctx, "gemini-2.5-flash", &genai.ClientConfig{
+		APIKey: os.Getenv("GOOGLE_API_KEY"),
+	})
+	if err != nil {
+		panic(fmt.Errorf("failed to create model: %w", err))
+	}
+
+	a, err := llmagent.New(llmagent.Config{
+		Name:        "judge_orchestrator",
+		Model:       model,
+		Description: "Routes requests to docker_agent or planner_agent based on user intent.",
+		Instruction: `You are the orchestrator. Delegate requests to sub-agents.
+- Use docker_agent when the user provides a Dockerfile and/or a tar archive to deploy or run.
+- Use planner_agent when the user provides directory contents and needs a Dockerfile created.
+- If unclear, ask a brief clarification question.`,
+		SubAgents: subAgents,
+	})
+	if err != nil {
+		panic(fmt.Errorf("failed to create orchestrator agent: %w", err))
 	}
 
 	return a

@@ -34,29 +34,32 @@ func startJudgeAgentServer() string {
 
 	go func() {
 		ctx := context.Background()
-		agent := app.NewDockerAgent(ctx)
+		dockerAgent := app.NewDockerAgent(ctx)
+		plannerAgent := app.NewPlannerAgent(ctx)
+		orchestratorAgent := app.NewOrchestratorAgent(ctx, dockerAgent, plannerAgent)
 
 		agentPath := "/invoke"
-		agentCard := &a2a.AgentCard{
-			Name:               agent.Name(),
-			Skills:             adka2a.BuildAgentSkills(agent),
+		orchestratorAgentCard := &a2a.AgentCard{
+			Name:               orchestratorAgent.Name(),
+			Skills:             adka2a.BuildAgentSkills(orchestratorAgent),
 			PreferredTransport: a2a.TransportProtocolJSONRPC,
 			URL:                baseURL.JoinPath(agentPath).String(),
 			Capabilities:       a2a.AgentCapabilities{Streaming: true},
 		}
 
 		mux := http.NewServeMux()
-		mux.Handle(a2asrv.WellKnownAgentCardPath, a2asrv.NewStaticAgentCardHandler(agentCard))
+		mux.Handle(a2asrv.WellKnownAgentCardPath, a2asrv.NewStaticAgentCardHandler(orchestratorAgentCard))
 
-		executor := adka2a.NewExecutor(adka2a.ExecutorConfig{
+		orchestratorExecutor := adka2a.NewExecutor(adka2a.ExecutorConfig{
 			RunnerConfig: runner.Config{
-				AppName:        agent.Name(),
-				Agent:          agent,
+				AppName:        orchestratorAgent.Name(),
+				Agent:          orchestratorAgent,
 				SessionService: session.InMemoryService(),
 			},
 		})
-		requestHandler := a2asrv.NewHandler(executor)
-		mux.Handle(agentPath, a2asrv.NewJSONRPCHandler(requestHandler))
+
+		orchestratorRequestHandler := a2asrv.NewHandler(orchestratorExecutor)
+		mux.Handle(agentPath, a2asrv.NewJSONRPCHandler(orchestratorRequestHandler))
 
 		err := http.Serve(listener, mux)
 
@@ -72,7 +75,7 @@ func main() {
 	a2aServerAddress := startJudgeAgentServer()
 
 	remoteAgent, err := remoteagent.NewA2A(remoteagent.A2AConfig{
-		Name:            "A2A Judge Agent",
+		Name:            "A2A Judge Orchestrator",
 		AgentCardSource: a2aServerAddress,
 	})
 	if err != nil {
