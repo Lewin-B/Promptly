@@ -149,12 +149,20 @@ type ReadTarOutput struct {
 
 func ReadTarArchive(ctx context.Context, req *mcp.CallToolRequest, input ReadTarInput) (*mcp.CallToolResult, ReadTarOutput, error) {
 	decodedTarBytes, err := base64.StdEncoding.DecodeString(input.Base64TarFile)
+	if err != nil {
+		panic(err)
+	}
 
 	bytesReader := bytes.NewReader(decodedTarBytes)
+	// gzipReader, err := gzip.NewReader(bytesReader)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// defer gzipReader.Close()
 
 	tr := tar.NewReader(bytesReader)
 
-	var files map[string]string
+	files := make(map[string]string)
 
 	for {
 		header, err := tr.Next()

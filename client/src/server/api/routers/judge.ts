@@ -2,6 +2,11 @@ import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "../trpc";
 import tar from "tar-stream";
 import type { SandpackFiles } from "@codesandbox/sandpack-react";
+import { fetch } from "undici";
+// import { gzip } from "zlib";
+// import { promisify } from "util";
+
+// const gzipAsync = promisify(gzip);
 
 const sandpackFileSchema = z.record(
   z.union([
@@ -61,9 +66,10 @@ export const judgeRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       const normalizedFiles = normalizeSandpackFiles(input.files);
       const tarArchive = await buildTarFromFiles(normalizedFiles);
+      // const gzippedTar = await gzipAsync(tarArchive);
       const tarArchiveBase64 = tarArchive.toString("base64");
 
-      const response = await fetch("http://127.0.0.1:63644/invoke", {
+      const response = await fetch("http://127.0.0.1:50432/invoke", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
