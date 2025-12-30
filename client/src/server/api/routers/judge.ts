@@ -3,6 +3,7 @@ import { createTRPCRouter, publicProcedure } from "../trpc";
 import tar from "tar-stream";
 import type { SandpackFiles } from "@codesandbox/sandpack-react";
 import { fetch } from "undici";
+import { env } from "~/env";
 
 const sandpackFileSchema = z.record(
   z.union([
@@ -60,7 +61,7 @@ export const judgeRouter = createTRPCRouter({
       const tarArchive = await buildTarFromFiles(normalizedFiles);
       const tarArchiveBase64 = tarArchive.toString("base64url");
 
-      const response = await fetch("http://127.0.0.1:51770/deploy", {
+      const response = await fetch(`${env.AGENT_SERVER_URL}/deploy`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

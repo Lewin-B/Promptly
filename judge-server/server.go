@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/a2aproject/a2a-go/a2a"
 	"github.com/a2aproject/a2a-go/a2asrv"
@@ -41,7 +43,17 @@ type deployResponse struct {
 }
 
 func startJudgeAgentServer() string {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	portEnv := strings.TrimSpace(os.Getenv("JUDGE_SERVER_PORT"))
+	listenAddr := "127.0.0.1:0"
+	if portEnv != "" {
+		port, err := strconv.Atoi(portEnv)
+		if err != nil || port < 0 || port > 65535 {
+			log.Fatalf("Invalid JUDGE_SERVER_PORT %q: must be 0-65535", portEnv)
+		}
+		listenAddr = net.JoinHostPort("127.0.0.1", portEnv)
+	}
+
+	listener, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		log.Fatalf("Failed to bind to a port: %v", err)
 	}
