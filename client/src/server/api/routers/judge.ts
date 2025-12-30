@@ -3,10 +3,6 @@ import { createTRPCRouter, publicProcedure } from "../trpc";
 import tar from "tar-stream";
 import type { SandpackFiles } from "@codesandbox/sandpack-react";
 import { fetch } from "undici";
-// import { gzip } from "zlib";
-// import { promisify } from "util";
-
-// const gzipAsync = promisify(gzip);
 
 const sandpackFileSchema = z.record(
   z.union([
@@ -19,41 +15,33 @@ const sandpackFileSchema = z.record(
   ]),
 );
 
-export interface JudgeResponse {
-  jsonrpc: "2.0";
-  id: string;
-  result: TaskResult;
+export interface DeployResponse {
+  container_name: string;
+  container_id: string;
+  image_name: string;
+  image_id: string;
 }
 
-// ---- Task Result ----
-export interface TaskResult {
-  kind: "task";
-  id: string;
-  artifacts: Artifact[];
-  contextId: string;
-  history: HistoryEntry[];
-  metadata: TaskMetadata;
-  status: TaskStatus;
-}
+const REACT_DOCKER_FILE = `FROM node:18-bullseye
 
-// ---- Artifacts (expand as needed) ----
-export type Artifact = Record<string, unknown>;
+WORKDIR /app
 
-// ---- History entries (expand as needed) ----
-export type HistoryEntry = Record<string, unknown>;
+COPY package*.json ./
 
-// ---- Metadata ----
-export interface TaskMetadata {
-  adk_app_name: string;
-  adk_session_id: string;
-  adk_user_id: string;
-}
+RUN npm install
 
-// ---- Status ----
-export interface TaskStatus {
-  state: "completed" | "running" | "failed" | "queued";
-  timestamp: string; // ISO-8601
-}
+COPY . .
+
+# Build the React app
+RUN npm run build
+
+# Install a lightweight static file server
+RUN npm install -g serve
+
+EXPOSE 3000
+
+CMD ["serve", "-s", "build", "-l", "3000"]
+`;
 
 export const judgeRouter = createTRPCRouter({
   submit: publicProcedure
@@ -65,36 +53,21 @@ export const judgeRouter = createTRPCRouter({
     )
     .mutation(async ({ input }) => {
       const normalizedFiles = normalizeSandpackFiles(input.files);
+      ensurePackageJsonMetadata(normalizedFiles);
+      for (const [path, content] of Object.entries(normalizedFiles)) {
+        console.log(`Sandpack file: ${path}\n${content}`);
+      }
       const tarArchive = await buildTarFromFiles(normalizedFiles);
-      // const gzippedTar = await gzipAsync(tarArchive);
-      const tarArchiveBase64 = tarArchive.toString("base64");
+      const tarArchiveBase64 = tarArchive.toString("base64url");
 
-      const response = await fetch("http://127.0.0.1:52602/invoke", {
+      const response = await fetch("http://127.0.0.1:51770/deploy", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: "1",
-          method: "message/send",
-          params: {
-            message: {
-              kind: "message",
-              messageId: "msg-1",
-              role: "user",
-              parts: [
-                {
-                  kind: "text",
-                  text:
-                    "Please deploy a container that runs the included contents" +
-                    "Input: a base64-encoded tar archive of project.\n" +
-                    "Required: decode the tar, read the contents, create a dockerfile, and deploy a container with the dockerfile.\n\n" +
-                    tarArchiveBase64,
-                },
-              ],
-            },
-          },
+          docker_file: REACT_DOCKER_FILE,
+          base64TarFile: tarArchiveBase64,
         }),
       });
 
@@ -102,9 +75,8 @@ export const judgeRouter = createTRPCRouter({
         throw new Error(`Judge invoke failed: ${response.status}`);
       }
 
-      const judgeResponse = (await response.json()) as JudgeResponse;
-      console.log("Judge Response: ", judgeResponse.result);
-      console.log("Artifact: ", judgeResponse.result.artifacts[0]?.parts);
+      const deployResponse = (await response.json()) as DeployResponse;
+      console.log("Deploy Response: ", deployResponse);
 
       return {
         receivedFiles: Object.keys(input.files).length,
@@ -118,8 +90,12 @@ function normalizeSandpackFiles(
 ): Record<string, string> {
   const newMap: Record<string, string> = {};
   for (const [key, value] of Object.entries(sandpackFiles)) {
-    if (key.startsWith("/")) {
+    if (key == "/package.json" || key.startsWith("/public")) {
       const newKey = key.substring(1);
+      if (typeof value != "string") newMap[newKey] = value.code;
+      else newMap[newKey] = value;
+    } else {
+      const newKey = "src" + key;
       if (typeof value != "string") newMap[newKey] = value.code;
       else newMap[newKey] = value;
     }
@@ -155,4 +131,32 @@ async function buildTarFromFiles(
   await new Promise<void>((resolve) => pack.on("end", resolve));
 
   return Buffer.concat(chunks);
+}
+
+function ensurePackageJsonMetadata(files: Record<string, string>) {
+  const packageJson = files["package.json"];
+  if (!packageJson) return;
+
+  try {
+    const parsed = JSON.parse(packageJson) as {
+      name?: string;
+      version?: string;
+      private?: boolean;
+      scripts: Record<string, string>;
+    };
+
+    parsed.name = "sandbox-app";
+    parsed.version = "0.1.0";
+    parsed.private = true;
+    parsed.scripts = {
+      start: "react-scripts start",
+      build: "react-scripts build",
+      test: "react-scripts test",
+      eject: "react-scripts eject",
+    };
+
+    files["package.json"] = JSON.stringify(parsed, null, 2);
+  } catch {
+    // Keep invalid JSON unchanged.
+  }
 }

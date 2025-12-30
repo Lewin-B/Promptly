@@ -26,7 +26,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/moby/moby/api/pkg/stdcopy"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -58,8 +57,31 @@ func DeployContainer(ctx context.Context, req *mcp.CallToolRequest, input Input)
 	defer apiClient.Close()
 
 	fmt.Println("Beginning Check")
-	buildContext := input.BuildContents
+	var buildContext bytes.Buffer
 	tarWriter := tar.NewWriter(&buildContext)
+	if input.BuildContents.Len() > 0 {
+		tarReader := tar.NewReader(bytes.NewReader(input.BuildContents.Bytes()))
+		for {
+			header, err := tarReader.Next()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				panic(err)
+			}
+			if header.Name == "Dockerfile" {
+				continue
+			}
+			if err := tarWriter.WriteHeader(header); err != nil {
+				panic(err)
+			}
+			if header.Typeflag == tar.TypeReg || header.Typeflag == tar.TypeRegA {
+				if _, err := io.Copy(tarWriter, tarReader); err != nil {
+					panic(err)
+				}
+			}
+		}
+	}
 	dockerfileContents := []byte(input.DockerFile)
 	if err := tarWriter.WriteHeader(&tar.Header{
 		Name: "Dockerfile",
@@ -114,18 +136,6 @@ func DeployContainer(ctx context.Context, req *mcp.CallToolRequest, input Input)
 		panic(err)
 	}
 
-	// 5. Capture Logs
-	out, err := apiClient.ContainerLogs(ctx, resp.ID, client.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
-	if err != nil {
-		panic(err)
-	}
-
-	var stdoutBuf, stderrBuf bytes.Buffer
-	_, err = stdcopy.StdCopy(&stdoutBuf, &stderrBuf, out)
-	if err != nil {
-		panic(err)
-	}
-
 	return nil, Output{
 		// Stdout:        stdoutBuf.String(),
 		// Stderr:        stderrBuf.String(),
@@ -153,6 +163,9 @@ func readDockerBuildOutput(r io.Reader) error {
 				return nil
 			}
 			return fmt.Errorf("failed to decode docker build output: %w", err)
+		}
+		if msg.Stream != "" {
+			fmt.Print(msg.Stream)
 		}
 		if msg.ErrorDetail != nil && msg.ErrorDetail.Message != "" {
 			return fmt.Errorf("docker build failed: %s", msg.ErrorDetail.Message)
