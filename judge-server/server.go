@@ -44,13 +44,13 @@ type deployResponse struct {
 
 func startJudgeAgentServer() string {
 	portEnv := strings.TrimSpace(os.Getenv("JUDGE_SERVER_PORT"))
-	listenAddr := "127.0.0.1:0"
+	listenAddr := "0.0.0.0:0"
 	if portEnv != "" {
 		port, err := strconv.Atoi(portEnv)
 		if err != nil || port < 0 || port > 65535 {
 			log.Fatalf("Invalid JUDGE_SERVER_PORT %q: must be 0-65535", portEnv)
 		}
-		listenAddr = net.JoinHostPort("127.0.0.1", portEnv)
+		listenAddr = net.JoinHostPort("0.0.0.0", portEnv)
 	}
 
 	listener, err := net.Listen("tcp", listenAddr)
