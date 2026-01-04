@@ -26,9 +26,12 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 type Input struct {
@@ -118,29 +121,17 @@ func DeployContainer(ctx context.Context, req *mcp.CallToolRequest, input Input)
 	}
 
 	fmt.Println("Just checking to see If I can see this")
-	containerName := "mcp-container-" + uuid.NewString()
-	resp, err := apiClient.ContainerCreate(ctx, client.ContainerCreateOptions{
-		Config: &container.Config{
-			Image: imageName,
-			Labels: map[string]string{
-				"mcp.dockerfile": input.DockerFile,
-			},
-		},
-		Name: containerName,
-	})
+	podName := "mcp-pod-" + uuid.NewString()
+	podUID, err := createKubernetesPod(ctx, podName, imageName, input.DockerFile)
 	if err != nil {
-		panic(err)
-	}
-
-	if _, err := apiClient.ContainerStart(ctx, resp.ID, client.ContainerStartOptions{}); err != nil {
 		panic(err)
 	}
 
 	return nil, Output{
 		// Stdout:        stdoutBuf.String(),
 		// Stderr:        stderrBuf.String(),
-		ContainerName: containerName,
-		ContainerID:   resp.ID,
+		ContainerName: podName,
+		ContainerID:   podUID,
 		ImageName:     imageName,
 		ImageID:       imageInspect.ID,
 	}, nil
@@ -226,6 +217,64 @@ func addDirectoryToTar(tw *tar.Writer, sourceDir, tarPrefix string) error {
 		_, err = io.Copy(tw, file)
 		return err
 	})
+}
+
+func createKubernetesPod(ctx context.Context, podName, imageName, dockerfile string) (string, error) {
+	namespace, err := resolveKubernetesNamespace()
+	if err != nil {
+		return "", err
+	}
+
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return "", fmt.Errorf("create in-cluster config: %w", err)
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return "", fmt.Errorf("create kubernetes client: %w", err)
+	}
+
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      podName,
+			Namespace: namespace,
+			Annotations: map[string]string{
+				"mcp.dockerfile": dockerfile,
+			},
+		},
+		Spec: corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyNever,
+			Containers: []corev1.Container{
+				{
+					Name:            "mcp",
+					Image:           imageName,
+					ImagePullPolicy: corev1.PullIfNotPresent,
+				},
+			},
+		},
+	}
+
+	result, err := clientset.CoreV1().Pods(namespace).Create(ctx, pod, metav1.CreateOptions{})
+	if err != nil {
+		return "", fmt.Errorf("create pod: %w", err)
+	}
+	if result.UID == "" {
+		return "", fmt.Errorf("pod created but UID missing in response")
+	}
+	return string(result.UID), nil
+}
+
+func resolveKubernetesNamespace() (string, error) {
+	if namespace := strings.TrimSpace(os.Getenv("MCP_K8S_NAMESPACE")); namespace != "" {
+		return namespace, nil
+	}
+	namespacePath := "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
+	if contents, err := os.ReadFile(namespacePath); err == nil {
+		if namespace := strings.TrimSpace(string(contents)); namespace != "" {
+			return namespace, nil
+		}
+	}
+	return "default", nil
 }
 
 type ShutdownInput struct {
