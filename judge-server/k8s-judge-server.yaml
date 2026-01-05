@@ -1,0 +1,118 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: judge-sa
+  namespace: judge
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: judge-pod-creator
+  namespace: judge
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["create", "get", "delete", "list", "watch"] 
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: judge-pod-creator-binding
+  namespace: judge
+subjects:
+  - kind: ServiceAccount
+    name: judge-sa
+    namespace: judge
+roleRef:
+  kind: Role
+  name: judge-pod-creator
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: judge-server
+  namespace: judge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: judge-server
+  template:
+    metadata:
+      labels:
+        app: judge-server
+    spec:
+      serviceAccountName: judge-sa # Uses the restricted identity
+      securityContext:
+        # Ensures the container cannot run as root
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 2000
+      containers:
+      - name: judge-server
+        image: go-server:latest
+        stdin: true
+        tty: true
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: true
+        env:
+        - name: GOOGLE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: judge-secrets
+              key: api-key
+        - name: JUDGE_SERVER_PORT
+          value: "8080"
+        - name: MCP_IMAGE_REGISTRY
+          value: "registry.judge.svc:5000"
+        - name: MCP_IMAGE_REGISTRY_INSECURE
+          value: "true"
+        - name: BUILDKIT_ADDR
+          value: "tcp://buildkitd.buildkit.svc.cluster.local:1234"
+        - name: BUILDKIT_TLS_CA
+          value: "/buildkit-certs/ca.pem"
+        - name: BUILDKIT_TLS_CERT
+          value: "/buildkit-certs/cert.pem"
+        - name: BUILDKIT_TLS_KEY
+          value: "/buildkit-certs/key.pem"
+        - name: TMPDIR
+          value: "/tmp"
+        volumeMounts:
+            - name: buildkit-client-mtls
+              mountPath: /buildkit-certs
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+        ports:
+        - containerPort: 8080
+      volumes:
+        - name: buildkit-client-mtls
+          secret:
+            secretName: buildkit-client-mtls
+            defaultMode: 0440
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: judge-server
+    namespace: judge
+spec:
+  type: NodePort
+  selector:
+    app: judge-server
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      nodePort: 30080

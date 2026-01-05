@@ -17,14 +17,15 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o judge-server .
 # Use a minimal alpine image for the final stage.
 FROM alpine:latest
 
-# Set the working directory.
-WORKDIR /root/
+# Create a non-root-friendly working directory.
+WORKDIR /app
 
 # Copy the binary from the builder stage.
-COPY --from=builder /app/judge-server .
+COPY --from=builder /app/judge-server /app/judge-server
+RUN chmod 755 /app/judge-server
 
 # Expose the port the app runs on.
 EXPOSE 8080
 
 # Command to run the application.
-CMD ["./judge-server"]
+CMD ["/app/judge-server"]

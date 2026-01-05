@@ -18,7 +18,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -26,12 +25,13 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/moby/moby/client"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+
+	"github.com/moby/buildkit/client"
 )
 
 type Input struct {
@@ -53,11 +53,6 @@ func DeployContainer(ctx context.Context, req *mcp.CallToolRequest, input Input)
 	if strings.TrimSpace(input.DockerFile) == "" {
 		return nil, Output{}, fmt.Errorf("docker_file is required")
 	}
-	apiClient, err := client.New(client.FromEnv)
-	if err != nil {
-		panic(err)
-	}
-	defer apiClient.Close()
 
 	fmt.Println("Beginning Check")
 	var buildContext bytes.Buffer
@@ -101,70 +96,26 @@ func DeployContainer(ctx context.Context, req *mcp.CallToolRequest, input Input)
 	}
 
 	imageName := "mcp-image-" + uuid.NewString()
-	buildResp, err := apiClient.ImageBuild(ctx, &buildContext, client.ImageBuildOptions{
-		Tags:       []string{imageName},
-		Dockerfile: "Dockerfile",
-		Remove:     true,
-	})
-	if err != nil {
-		panic(err)
-	}
-	if err := readDockerBuildOutput(buildResp.Body); err != nil {
-		buildResp.Body.Close()
-		panic(err)
-	}
-	buildResp.Body.Close()
-
-	imageInspect, err := apiClient.ImageInspect(ctx, imageName)
+	imageRef, buildStdout, buildStderr, err := buildImageWithBuildkit(ctx, imageName, &buildContext)
 	if err != nil {
 		panic(err)
 	}
 
 	fmt.Println("Just checking to see If I can see this")
 	podName := "mcp-pod-" + uuid.NewString()
-	podUID, err := createKubernetesPod(ctx, podName, imageName, input.DockerFile)
+	podUID, err := createKubernetesPod(ctx, podName, imageRef, input.DockerFile)
 	if err != nil {
 		panic(err)
 	}
 
 	return nil, Output{
-		// Stdout:        stdoutBuf.String(),
-		// Stderr:        stderrBuf.String(),
+		Stdout:        buildStdout,
+		Stderr:        buildStderr,
 		ContainerName: podName,
 		ContainerID:   podUID,
-		ImageName:     imageName,
-		ImageID:       imageInspect.ID,
+		ImageName:     imageRef,
+		ImageID:       imageRef,
 	}, nil
-}
-
-type dockerBuildMessage struct {
-	Stream      string `json:"stream"`
-	Error       string `json:"error"`
-	ErrorDetail *struct {
-		Message string `json:"message"`
-	} `json:"errorDetail"`
-}
-
-func readDockerBuildOutput(r io.Reader) error {
-	decoder := json.NewDecoder(r)
-	for {
-		var msg dockerBuildMessage
-		if err := decoder.Decode(&msg); err != nil {
-			if err == io.EOF {
-				return nil
-			}
-			return fmt.Errorf("failed to decode docker build output: %w", err)
-		}
-		if msg.Stream != "" {
-			fmt.Print(msg.Stream)
-		}
-		if msg.ErrorDetail != nil && msg.ErrorDetail.Message != "" {
-			return fmt.Errorf("docker build failed: %s", msg.ErrorDetail.Message)
-		}
-		if msg.Error != "" {
-			return fmt.Errorf("docker build failed: %s", msg.Error)
-		}
-	}
 }
 
 func addDirectoryToTar(tw *tar.Writer, sourceDir, tarPrefix string) error {
@@ -217,6 +168,114 @@ func addDirectoryToTar(tw *tar.Writer, sourceDir, tarPrefix string) error {
 		_, err = io.Copy(tw, file)
 		return err
 	})
+}
+
+func buildImageWithBuildkit(ctx context.Context, imageName string, buildContext *bytes.Buffer) (string, string, string, error) {
+	registry := strings.TrimSpace(os.Getenv("MCP_IMAGE_REGISTRY"))
+	if registry == "" {
+		return "", "", "", fmt.Errorf("MCP_IMAGE_REGISTRY is required to push images from the cluster")
+	}
+	buildkitAddr := strings.TrimSpace(os.Getenv("BUILDKIT_ADDR"))
+	if buildkitAddr == "" {
+		return "", "", "", fmt.Errorf("BUILDKIT_ADDR is required to connect to buildkitd")
+	}
+	tempDir, err := os.MkdirTemp("", "mcp-buildkit-")
+	if err != nil {
+		return "", "", "", fmt.Errorf("create build context dir: %w", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	if err := extractTarToDir(bytes.NewReader(buildContext.Bytes()), tempDir); err != nil {
+		return "", "", "", fmt.Errorf("extract build context: %w", err)
+	}
+
+	imageRef := fmt.Sprintf("%s/%s", strings.TrimSuffix(registry, "/"), imageName)
+
+	var opts []client.ClientOpt
+	if certPath := strings.TrimSpace(os.Getenv("BUILDKIT_TLS_CERT")); certPath != "" {
+		keyPath := strings.TrimSpace(os.Getenv("BUILDKIT_TLS_KEY"))
+		if keyPath == "" {
+			return "", "", "", fmt.Errorf("BUILDKIT_TLS_KEY must be set when BUILDKIT_TLS_CERT is provided")
+		}
+		opts = append(opts, client.WithCredentials(certPath, keyPath))
+	}
+	if caPath := strings.TrimSpace(os.Getenv("BUILDKIT_TLS_CA")); caPath != "" {
+		serverName := strings.TrimSpace(os.Getenv("BUILDKIT_TLS_SERVER_NAME"))
+		opts = append(opts, client.WithServerConfig(serverName, caPath))
+	}
+	bkClient, err := client.New(ctx, buildkitAddr, opts...)
+	if err != nil {
+		return "", "", "", fmt.Errorf("connect to buildkit: %w", err)
+	}
+	defer bkClient.Close()
+
+	solveOpt := client.SolveOpt{
+		Frontend: "dockerfile.v0",
+		FrontendAttrs: map[string]string{
+			"filename": "Dockerfile",
+		},
+		LocalDirs: map[string]string{
+			"context":    tempDir,
+			"dockerfile": tempDir,
+		},
+		Exports: []client.ExportEntry{
+			{
+				Type: client.ExporterImage,
+				Attrs: map[string]string{
+					"name": imageRef,
+					"push": "true",
+				},
+			},
+		},
+	}
+	if strings.EqualFold(strings.TrimSpace(os.Getenv("MCP_IMAGE_REGISTRY_INSECURE")), "true") {
+		solveOpt.Exports[0].Attrs["registry.insecure"] = "true"
+		solveOpt.Exports[0].Attrs["registry.plainhttp"] = "true"
+	}
+	if _, err := bkClient.Solve(ctx, nil, solveOpt, nil); err != nil {
+		return "", "", "", fmt.Errorf("buildkit build failed: %w", err)
+	}
+
+	return imageRef, "", "", nil
+}
+
+func extractTarToDir(r io.Reader, dest string) error {
+	tr := tar.NewReader(r)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		cleanName := filepath.Clean(header.Name)
+		if filepath.IsAbs(cleanName) || strings.HasPrefix(cleanName, "..") {
+			return fmt.Errorf("invalid tar entry: %s", header.Name)
+		}
+		targetPath := filepath.Join(dest, cleanName)
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(targetPath, os.FileMode(header.Mode)); err != nil {
+				return err
+			}
+		case tar.TypeReg, tar.TypeRegA:
+			if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
+				return err
+			}
+			file, err := os.OpenFile(targetPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(header.Mode))
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(file, tr); err != nil {
+				file.Close()
+				return err
+			}
+			if err := file.Close(); err != nil {
+				return err
+			}
+		}
+	}
 }
 
 func createKubernetesPod(ctx context.Context, podName, imageName, dockerfile string) (string, error) {
@@ -287,17 +346,23 @@ type ShutdownOutput struct {
 
 func ShutdownContainer(ctx context.Context, req *mcp.CallToolRequest, input ShutdownInput) (*mcp.CallToolResult, ShutdownOutput, error) {
 	ctx = context.Background()
-	apiClient, err := client.New(client.FromEnv)
+	config, err := rest.InClusterConfig()
 	if err != nil {
 		panic(err)
 	}
-	defer apiClient.Close()
-
-	if _, err := apiClient.ContainerStop(ctx, input.ContainerID, client.ContainerStopOptions{}); err != nil {
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		panic(err)
+	}
+	namespace, err := resolveKubernetesNamespace()
+	if err != nil {
+		panic(err)
+	}
+	if err := clientset.CoreV1().Pods(namespace).Delete(ctx, input.ContainerID, metav1.DeleteOptions{}); err != nil {
 		panic(err)
 	}
 
 	return nil, ShutdownOutput{
-		Message: "container shut down",
+		Message: "pod deleted",
 	}, nil
 }
