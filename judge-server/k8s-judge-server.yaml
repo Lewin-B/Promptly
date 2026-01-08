@@ -54,7 +54,7 @@ spec:
         fsGroup: 2000
       containers:
       - name: judge-server
-        image: go-server:latest
+        image: b0bdabuilder/go-server 
         stdin: true
         tty: true
         imagePullPolicy: IfNotPresent
@@ -116,3 +116,24 @@ spec:
       port: 8080
       targetPort: 8080
       nodePort: 30080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: judge-server-ingress
+  namespace: judge
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+spec:
+  ingressClassName: traefik
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: judge-server
+                port:
+                  number: 8080
+
