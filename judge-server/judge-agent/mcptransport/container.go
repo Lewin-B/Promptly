@@ -54,7 +54,6 @@ func DeployContainer(ctx context.Context, req *mcp.CallToolRequest, input Input)
 		return nil, Output{}, fmt.Errorf("docker_file is required")
 	}
 
-	fmt.Println("Beginning Check")
 	var buildContext bytes.Buffer
 	tarWriter := tar.NewWriter(&buildContext)
 	if input.BuildContents.Len() > 0 {
@@ -101,7 +100,6 @@ func DeployContainer(ctx context.Context, req *mcp.CallToolRequest, input Input)
 		panic(err)
 	}
 
-	fmt.Println("Just checking to see If I can see this")
 	podName := "mcp-pod-" + uuid.NewString()
 	podUID, err := createKubernetesPod(ctx, podName, imageRef, input.DockerFile)
 	if err != nil {
