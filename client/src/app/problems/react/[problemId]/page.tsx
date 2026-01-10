@@ -18,10 +18,9 @@ export default function ProblemDetailPage({
   const problemId = useMemo(() => Number(problemIdParam), [problemIdParam]);
   const isProblemIdValid = Number.isFinite(problemId);
 
-  const { data, isLoading, error } = api.problem.getProblem.useQuery(
-    { problemId },
-    { enabled: Boolean(categoryValue) && isProblemIdValid },
-  );
+  const { data, isLoading, error } = api.problem.getProblem.useQuery({
+    problemId,
+  });
 
   const [initialFiles, setInitialFiles] = useState<SandpackFiles | null>(null);
   const lastProblemIdRef = useRef<number | null>(null);

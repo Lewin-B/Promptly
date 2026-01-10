@@ -5,7 +5,6 @@ import {
   text,
   integer,
   serial,
-  uuid,
   timestamp,
   jsonb,
   pgEnum,
@@ -15,10 +14,10 @@ export const createTable = pgTableCreator((name) => `promptly_${name}`);
 
 export const difficultyEnum = pgEnum("difficulty", ["Easy", "Medium", "Hard"]);
 export const categoryEnum = pgEnum("category", ["React", "Python", "C++"]);
-export const statusEnum = pgEnum("status", ["success, failure"]);
+export const statusEnum = pgEnum("status", ["success", "failure"]);
 
 export const user = createTable("user", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified")
@@ -34,23 +33,23 @@ export const user = createTable("user", {
 });
 
 export const session = createTable("session", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: text("id").primaryKey(),
   expiresAt: timestamp("expires_at").notNull(),
   token: text("token").notNull().unique(),
   createdAt: timestamp("created_at").notNull(),
   updatedAt: timestamp("updated_at").notNull(),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
-  userId: uuid("user_id")
+  userId: text("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
 });
 
 export const account = createTable("account", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  accountId: uuid("account_id").notNull(),
+  id: text("id").primaryKey(),
+  accountId: text("account_id").notNull(),
   providerId: text("provider_id").notNull(),
-  userId: uuid("user_id")
+  userId: text("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   accessToken: text("access_token"),
@@ -65,7 +64,7 @@ export const account = createTable("account", {
 });
 
 export const verification = createTable("verification", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: text("id").primaryKey(),
   identifier: text("identifier").notNull(),
   value: text("value").notNull(),
   expiresAt: timestamp("expires_at").notNull(),
@@ -131,7 +130,7 @@ export const Submission = createTable("submission", {
   problemId: integer("problem_id").references(() => Problem.id, {
     onDelete: "cascade",
   }),
-  accountId: uuid("account_id").references(() => account.id, {
+  accountId: text("account_id").references(() => account.id, {
     onDelete: "cascade",
   }),
   submittedCode: jsonb("submitted_code").$type<CodeContent>().notNull(),
