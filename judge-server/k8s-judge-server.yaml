@@ -54,7 +54,7 @@ spec:
         fsGroup: 2000
       containers:
       - name: judge-server
-        image: go-server 
+        image: b0bdabuilder/go-server 
         stdin: true
         tty: true
         imagePullPolicy: IfNotPresent

@@ -5,7 +5,7 @@ import { Button } from "~/components/ui/button";
 export default function Hero() {
   return (
     <section className="text-foreground relative flex min-h-screen w-full items-center justify-center px-6 py-16 sm:py-20">
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-linear-to-b from-slate-50 via-white to-slate-50" />
+      <div className="to-primary/30 from-primary/20 pointer-events-none absolute inset-0 -z-10 bg-linear-to-bl via-white" />
       <div className="mx-auto flex max-w-3xl flex-col items-center gap-6 text-center">
         <h1 className="text-5xl font-black tracking-tight text-balance text-slate-900 sm:text-6xl lg:text-7xl">
           Promptly

@@ -1,8 +1,10 @@
 import Hero from "./_components/landing/hero";
-export default async function Home() {
+import About from "./_components/landing/about";
+export default function Home() {
   return (
-    <main className="flex min-h-screen items-center justify-center">
+    <main className="flex min-h-screen flex-col items-center justify-center">
       <Hero />
+      <About />
     </main>
   );
 }
