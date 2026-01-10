@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, use } from "react";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -11,7 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import { categoryEnum } from "~/server/db/schema";
 import { api } from "~/trpc/react";
 
 const difficultyStyles: Record<string, string> = {
@@ -28,23 +26,10 @@ function getSummary(text?: string) {
   return `${text.slice(0, 137)}...`;
 }
 
-export default function ProblemsByCategoryPage({
-  params,
-}: {
-  params: Promise<{ category: string }>;
-}) {
-  const { category } = use(params);
-  const categoryValue = useMemo(() => {
-    const match = categoryEnum.enumValues.find(
-      (value) => value.toLowerCase() === category.toLowerCase(),
-    );
-    return match ?? null;
-  }, [category]);
-
-  const { data, isLoading, error } = api.problem.getProblems.useQuery(
-    categoryValue ? { category: categoryValue } : undefined,
-    { enabled: Boolean(categoryValue) },
-  );
+export default function ProblemsByCategoryPage() {
+  const { data, isLoading, error } = api.problem.getProblems.useQuery({
+    category: "React",
+  });
 
   return (
     <div className="min-h-screen bg-linear-to-b from-slate-50 via-white to-slate-100 px-6 py-10">
@@ -55,7 +40,7 @@ export default function ProblemsByCategoryPage({
               Problems
             </p>
             <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
-              {categoryValue ?? "Unknown Category"}
+              {"React"}
             </h1>
             <p className="mt-2 text-sm text-slate-500">
               Practice prompts curated for focused practice sessions.
@@ -66,16 +51,7 @@ export default function ProblemsByCategoryPage({
           </Button>
         </header>
 
-        {!categoryValue ? (
-          <Card className="border-rose-200 bg-rose-50/60">
-            <CardHeader>
-              <CardTitle>Category not found</CardTitle>
-              <CardDescription>
-                Pick a valid category to view problems.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        ) : isLoading ? (
+        {isLoading ? (
           <div className="grid gap-4 sm:grid-cols-2">
             {Array.from({ length: 4 }).map((_, index) => (
               <Card key={index} className="animate-pulse border-slate-200/70">

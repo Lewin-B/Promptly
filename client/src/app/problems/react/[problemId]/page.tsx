@@ -1,9 +1,8 @@
 "use client";
 
 import { use, useEffect, useMemo, useRef, useState } from "react";
-import { categoryEnum } from "~/server/db/schema";
 import { api } from "~/trpc/react";
-import CodeRunner from "./_components/code-runner";
+import CodeRunner from "./_components/react-runner";
 import { SandboxProvider } from "~/components/ui/sandbox";
 import ProblemDescription from "./_components/problem-description";
 import type { SandpackFiles } from "@codesandbox/sandpack-react";
@@ -14,13 +13,7 @@ export default function ProblemDetailPage({
   params: Promise<{ category: string; problemId: string }>;
 }) {
   const { category, problemId: problemIdParam } = use(params);
-  const categoryValue = useMemo(() => {
-    return (
-      categoryEnum.enumValues.find(
-        (value) => value.toLowerCase() === category.toLowerCase(),
-      ) ?? null
-    );
-  }, [category]);
+  const categoryValue = "React";
 
   const problemId = useMemo(() => Number(problemIdParam), [problemIdParam]);
   const isProblemIdValid = Number.isFinite(problemId);
