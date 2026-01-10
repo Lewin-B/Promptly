@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -207,6 +208,36 @@ func buildImageWithBuildkit(ctx context.Context, imageName string, buildContext 
 	}
 	defer bkClient.Close()
 
+	statusCh := make(chan *client.SolveStatus)
+	var buildLogs bytes.Buffer
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		vertexNames := map[string]string{}
+		for status := range statusCh {
+			for _, vertex := range status.Vertexes {
+				if vertex.Name != "" {
+					vertexNames[vertex.Digest.String()] = vertex.Name
+				}
+			}
+			for _, entry := range status.Logs {
+				if len(entry.Data) == 0 {
+					continue
+				}
+				vertexName := vertexNames[entry.Vertex.String()]
+				if vertexName == "" {
+					vertexName = entry.Vertex.String()
+				}
+				line := strings.TrimRight(string(entry.Data), "\n")
+				if line == "" {
+					continue
+				}
+				fmt.Fprintf(&buildLogs, "[%s][stream:%d] %s\n", vertexName, entry.Stream, line)
+				log.Printf("buildkit: [%s][stream:%d] %s", vertexName, entry.Stream, line)
+			}
+		}
+	}()
+
 	solveOpt := client.SolveOpt{
 		Frontend: "dockerfile.v0",
 		FrontendAttrs: map[string]string{
@@ -230,11 +261,15 @@ func buildImageWithBuildkit(ctx context.Context, imageName string, buildContext 
 		solveOpt.Exports[0].Attrs["registry.insecure"] = "true"
 		solveOpt.Exports[0].Attrs["registry.plainhttp"] = "true"
 	}
-	if _, err := bkClient.Solve(ctx, nil, solveOpt, nil); err != nil {
-		return "", "", "", fmt.Errorf("buildkit build failed: %w", err)
+	if _, err := bkClient.Solve(ctx, nil, solveOpt, statusCh); err != nil {
+		close(statusCh)
+		<-done
+		return "", buildLogs.String(), "", fmt.Errorf("buildkit build failed: %w", err)
 	}
+	close(statusCh)
+	<-done
 
-	return imageRef, "", "", nil
+	return imageRef, buildLogs.String(), "", nil
 }
 
 func extractTarToDir(r io.Reader, dest string) error {
