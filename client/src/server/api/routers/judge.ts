@@ -25,6 +25,10 @@ const sandpackFileSchema = z.record(
     }),
   ]),
 );
+const chatMessageSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  content: z.string(),
+});
 
 export interface DeployResponse {
   container_name: string;
@@ -38,6 +42,7 @@ export interface AnalyzerResponse {
   codeQuality: { score: number; rationale: string };
   functionality: { score: number; rationale: string };
   productionAbility: { score: number; rationale: string };
+  chatHistory: { score: number; rationale: string };
   overallVerdict: string;
 }
 
@@ -73,6 +78,7 @@ export const judgeRouter = createTRPCRouter({
         problemId: z.number(),
         files: sandpackFileSchema,
         submissionId: z.string().min(1),
+        chatHistory: z.array(chatMessageSchema),
       }),
     )
     .mutation(async ({ input }) => {
@@ -204,6 +210,7 @@ export const judgeRouter = createTRPCRouter({
                         problemDescription: problem?.description ?? null,
                         files: normalizedFiles,
                         buildLogs: deployResponse?.build_logs ?? "",
+                        chatHistory: input.chatHistory,
                       },
                     },
                   ],

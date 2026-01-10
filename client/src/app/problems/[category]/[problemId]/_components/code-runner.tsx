@@ -16,7 +16,7 @@ import { CheckCircle2, Files, TestTube, Wallpaper } from "lucide-react";
 import { useSandpack, type SandpackFiles } from "@codesandbox/sandpack-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { AssistantSidebar } from "./assistant-sidebar";
+import { AssistantSidebar, type ChatMessage } from "./assistant-sidebar";
 import type { ProblemDescriptionProps } from "./problem-description";
 import {
   ResizableHandle,
@@ -46,6 +46,7 @@ export default function CodeRunner({
     useState<SubmissionStage>("idle");
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [submissionId, setSubmissionId] = useState<string | null>(null);
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const sessionEndRef = useRef<number | null>(null);
   const { sandpack } = useSandpack();
   const { mutateAsync: submitSolution, isPending: isSubmitting } =
@@ -152,6 +153,7 @@ export default function CodeRunner({
         problemId,
         files: sandpack.files,
         submissionId: nextSubmissionId,
+        chatHistory,
       });
       setSubmitMessage("Submission sent");
     } catch (error) {
@@ -159,7 +161,7 @@ export default function CodeRunner({
       setSubmitMessage("Submission failed");
       setSubmissionError("We hit an error while processing your submission.");
     }
-  }, [problemId, sandpack.files, submitSolution]);
+  }, [problemId, sandpack.files, submitSolution, chatHistory]);
 
   const handleBeginSubmit = useCallback(() => {
     setShowCaution(true);
@@ -206,7 +208,10 @@ export default function CodeRunner({
           className="min-w-[16rem]"
         >
           <div className="bg-muted/40 h-full w-full overflow-hidden border-r p-3 md:p-4">
-            <AssistantSidebar problemDescription={problemDescription} />
+            <AssistantSidebar
+              problemDescription={problemDescription}
+              onMessagesChange={setChatHistory}
+            />
           </div>
         </ResizablePanel>
         <ResizableHandle withHandle />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useSandpack } from "@codesandbox/sandpack-react";
 import { Loader2, Send, Sparkles } from "lucide-react";
@@ -13,7 +13,7 @@ import ProblemDescription, {
   type ProblemDescriptionProps,
 } from "./problem-description";
 
-type ChatMessage = {
+export type ChatMessage = {
   role: "user" | "assistant";
   content: string;
 };
@@ -36,10 +36,12 @@ const MODEL_OPTIONS: Array<{ value: AiModel; label: string }> = [
 
 type AssistantSidebarProps = {
   problemDescription: ProblemDescriptionProps;
+  onMessagesChange?: (messages: ChatMessage[]) => void;
 };
 
 export function AssistantSidebar({
   problemDescription,
+  onMessagesChange,
 }: AssistantSidebarProps) {
   const defaultMessages: ChatMessage[] = [
     {
@@ -162,6 +164,10 @@ export function AssistantSidebar({
     //   window.localStorage.removeItem(storageKey);
     // }
   };
+
+  useEffect(() => {
+    onMessagesChange?.(messages);
+  }, [messages, onMessagesChange]);
 
   return (
     <div className="flex h-full w-full flex-col gap-3 overflow-scroll">
