@@ -25,6 +25,14 @@ export interface DeployResponse {
   container_id: string;
   image_name: string;
   image_id: string;
+  build_logs: string;
+  build_failed: boolean;
+}
+export interface AnalyzerResponse {
+  codeQuality: { score: number; rationale: string };
+  functionality: { score: number; rationale: string };
+  productionAbility: { score: number; rationale: string };
+  overallVerdict: string;
 }
 
 const REACT_DOCKER_FILE = `FROM node:18-bullseye
@@ -125,29 +133,83 @@ export const judgeRouter = createTRPCRouter({
       const tarArchiveBase64 = tarArchive.toString("base64url");
 
       // Build docker image
-      const response = await fetch(`${env.AGENT_SERVER_URL}/deploy`, {
+      let deployResponse: DeployResponse | null = null;
+      let deployFetchOk = false;
+      try {
+        const response = await fetch(`${env.AGENT_SERVER_URL}/deploy`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            docker_file: REACT_DOCKER_FILE,
+            base64TarFile: tarArchiveBase64,
+          }),
+        });
+        deployFetchOk = response.ok;
+        try {
+          deployResponse = (await response.json()) as DeployResponse;
+        } catch (error) {
+          console.warn("Failed to parse deploy response:", error);
+        }
+      } catch (error) {
+        console.warn("Deploy request failed:", error);
+      }
+      console.log("Deploy Response: ", deployResponse);
+
+      const analyzerResponse = await fetch(`${env.AGENT_SERVER_URL}/analyze`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          docker_file: REACT_DOCKER_FILE,
-          base64TarFile: tarArchiveBase64,
+          jsonrpc: "2.0",
+          method: "message/send",
+          id: randomUUID(),
+          params: {
+            configuration: {
+              blocking: true,
+            },
+            message: {
+              messageId: randomUUID(),
+              role: "user",
+              parts: [
+                {
+                  kind: "text",
+                  text: "Analyze the submission using the provided logs, files, and problem description.",
+                },
+                {
+                  kind: "data",
+                  data: {
+                    problemId: input.problemId,
+                    problemDescription: problem?.description ?? null,
+                    files: normalizedFiles,
+                    buildLogs: deployResponse?.build_logs ?? "",
+                  },
+                },
+              ],
+            },
+          },
         }),
       });
 
-      if (!response.ok) {
-        throw new Error(`Judge invoke failed: ${response.status}`);
+      if (!analyzerResponse.ok) {
+        throw new Error(
+          `Analyzer agent invoke failed: ${analyzerResponse.status}`,
+        );
       }
 
-      const deployResponse = (await response.json()) as DeployResponse;
-      console.log("Deploy Response: ", deployResponse);
+      const analyzerBodyText = await analyzerResponse.text();
+      const analyzerResult = parseAnalyzerResult(analyzerBodyText);
 
-      // Analyze build output
+      console.log("Analyzer result: ", analyzerResult);
 
       return {
         receivedFiles: Object.keys(input.files).length,
         problemId: input.problemId,
+        buildFailed: deployResponse?.build_failed ?? !deployFetchOk,
+        buildLogs: deployResponse?.build_logs ?? "",
+        analysis: analyzerResult,
       };
     }),
 });
@@ -258,6 +320,37 @@ function parseTestAgentArtifacts(
     return parsed;
   } catch (error) {
     console.warn("Failed to parse test agent artifacts:", error);
+    return null;
+  }
+}
+
+function parseAnalyzerResult(bodyText: string): AnalyzerResponse | null {
+  try {
+    const response = JSON.parse(bodyText) as {
+      result?: {
+        artifacts?: Array<{
+          parts?: Array<{
+            kind?: string;
+            text?: string;
+          }>;
+        }>;
+      };
+    };
+
+    const parts = response.result?.artifacts?.flatMap(
+      (artifact) => artifact.parts ?? [],
+    );
+    const textPart = parts?.find((part) => part.kind === "text")?.text;
+    if (!textPart) return null;
+
+    const trimmed = textPart.trim();
+    const jsonPayload = trimmed
+      .replace(/^```json\s*/i, "")
+      .replace(/```$/i, "")
+      .trim();
+    return JSON.parse(jsonPayload) as AnalyzerResponse;
+  } catch (error) {
+    console.warn("Failed to parse analyzer response:", error);
     return null;
   }
 }

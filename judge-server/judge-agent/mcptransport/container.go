@@ -43,6 +43,8 @@ type Input struct {
 type Output struct {
 	Stdout        string `json:"standard_out" jsonschema:"container standard output"`
 	Stderr        string `json:"standard_error" jsonschema:"container error output"`
+	BuildLogs     string `json:"build_logs" jsonschema:"build output logs"`
+	BuildFailed   bool   `json:"build_failed" jsonschema:"whether the build failed"`
 	ContainerName string `json:"container_name" jsonschema:"container name"`
 	ContainerID   string `json:"container_id" jsonschema:"container ID"`
 	ImageName     string `json:"image_name" jsonschema:"image name"`
@@ -98,7 +100,12 @@ func DeployContainer(ctx context.Context, req *mcp.CallToolRequest, input Input)
 	imageName := "mcp-image-" + uuid.NewString()
 	imageRef, buildStdout, buildStderr, err := buildImageWithBuildkit(ctx, imageName, &buildContext)
 	if err != nil {
-		panic(err)
+		return nil, Output{
+			Stdout:      buildStdout,
+			Stderr:      buildStderr,
+			BuildLogs:   buildStdout,
+			BuildFailed: true,
+		}, err
 	}
 
 	podName := "mcp-pod-" + uuid.NewString()
@@ -110,6 +117,8 @@ func DeployContainer(ctx context.Context, req *mcp.CallToolRequest, input Input)
 	return nil, Output{
 		Stdout:        buildStdout,
 		Stderr:        buildStderr,
+		BuildLogs:     buildStdout,
+		BuildFailed:   false,
 		ContainerName: podName,
 		ContainerID:   podUID,
 		ImageName:     imageRef,

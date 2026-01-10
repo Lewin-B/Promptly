@@ -208,3 +208,45 @@ func NewTestAgent(ctx context.Context) agent.Agent {
 
 	return a
 }
+
+func NewAnalyzerAgent(ctx context.Context) agent.Agent {
+	model, err := gemini.NewModel(ctx, "gemini-2.5-flash", &genai.ClientConfig{
+		APIKey: os.Getenv("GOOGLE_API_KEY"),
+	})
+	if err != nil {
+		panic(fmt.Errorf("failed to create model: %w", err))
+	}
+
+	transport := mcptransport.Local(ctx)
+
+	mcpToolSet, err := mcptoolset.New(mcptoolset.Config{
+		Transport: transport,
+	})
+	if err != nil {
+		panic(fmt.Errorf("failed to create MCP tool set: %w", err))
+	}
+
+	a, err := llmagent.New((llmagent.Config{
+		Name:        "submission_analyzer",
+		Model:       model,
+		Description: "Analyzes submission quality, functionality, and buildability.",
+		Instruction: `You are an analyzer. You receive the build logs, the project files as strings, and the problem description.
+					  Grade the submission on:
+					  - CodeQuality (0-100): clarity, structure, and maintainability.
+					  - Functionality (0-100): how well the code satisfies the requirements.
+					  - ProductionAbility (0-100): likelihood the project builds and runs in BuildKit.
+					  Also include a short rationale for each score and an overall verdict.
+					  Output only raw JSON in the form:
+					  {"codeQuality":{"score":0,"rationale":""},"functionality":{"score":0,"rationale":""},"productionAbility":{"score":0,"rationale":""},"overallVerdict":""}
+					  Do not wrap the JSON in markdown, code fences, or extra commentary.`,
+		Toolsets: []tool.Toolset{
+			mcpToolSet,
+		},
+	}))
+
+	if err != nil {
+		panic(fmt.Errorf("Failed to create agent: ", err))
+	}
+
+	return a
+}

@@ -40,6 +40,8 @@ type deployResponse struct {
 	ContainerID   string `json:"container_id"`
 	ImageName     string `json:"image_name"`
 	ImageID       string `json:"image_id"`
+	BuildLogs     string `json:"build_logs"`
+	BuildFailed   bool   `json:"build_failed"`
 }
 
 func startJudgeAgentServer() string {
@@ -65,8 +67,10 @@ func startJudgeAgentServer() string {
 	go func() {
 		ctx := context.Background()
 		testAgent := app.NewTestAgent(ctx)
+		analyzerAgent := app.NewAnalyzerAgent(ctx)
 
 		agentPath := "/test"
+		analyzerPath := "/analyze"
 		testAgentCard := &a2a.AgentCard{
 			Name:               testAgent.Name(),
 			Skills:             adka2a.BuildAgentSkills(testAgent),
@@ -85,11 +89,22 @@ func startJudgeAgentServer() string {
 				SessionService: session.InMemoryService(),
 			},
 		})
+		analyzerExecutor := adka2a.NewExecutor(adka2a.ExecutorConfig{
+			RunnerConfig: runner.Config{
+				AppName:        analyzerAgent.Name(),
+				Agent:          analyzerAgent,
+				SessionService: session.InMemoryService(),
+			},
+		})
 
 		testRequestHandler := a2asrv.NewHandler(testExecutor)
 		testJSONRPCHandler := a2asrv.NewJSONRPCHandler(testRequestHandler)
 		mux.Handle(agentPath, testJSONRPCHandler)
 		mux.Handle(agentPath+"/", testJSONRPCHandler)
+		analyzerRequestHandler := a2asrv.NewHandler(analyzerExecutor)
+		analyzerJSONRPCHandler := a2asrv.NewJSONRPCHandler(analyzerRequestHandler)
+		mux.Handle(analyzerPath, analyzerJSONRPCHandler)
+		mux.Handle(analyzerPath+"/", analyzerJSONRPCHandler)
 		mux.HandleFunc("/deploy", func(w http.ResponseWriter, r *http.Request) {
 			handleDeploy(w, r)
 		})
@@ -141,7 +156,12 @@ func handleDeploy(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(deployResponse{
+			BuildLogs:   output.BuildLogs,
+			BuildFailed: output.BuildFailed,
+		})
 		return
 	}
 
@@ -151,6 +171,8 @@ func handleDeploy(w http.ResponseWriter, r *http.Request) {
 		ContainerID:   output.ContainerID,
 		ImageName:     output.ImageName,
 		ImageID:       output.ImageID,
+		BuildLogs:     output.BuildLogs,
+		BuildFailed:   output.BuildFailed,
 	}); err != nil {
 		log.Printf("Failed to write deploy response: %v", err)
 	}
