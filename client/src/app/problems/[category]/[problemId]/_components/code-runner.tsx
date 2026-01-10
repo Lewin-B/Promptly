@@ -25,6 +25,10 @@ import {
 } from "~/components/ui/resizable";
 import { Button } from "~/components/ui/button";
 import { api } from "~/trpc/react";
+import {
+  SubmissionProgress,
+  type SubmissionStage,
+} from "./submission-progress";
 
 export default function CodeRunner({
   problemId,
@@ -38,10 +42,22 @@ export default function CodeRunner({
   const [timeLeft, setTimeLeft] = useState(15 * 60);
   const [submitMessage, setSubmitMessage] = useState<string | null>(null);
   const [showCaution, setShowCaution] = useState(false);
+  const [submissionStage, setSubmissionStage] =
+    useState<SubmissionStage>("idle");
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [submissionId, setSubmissionId] = useState<string | null>(null);
   const sessionEndRef = useRef<number | null>(null);
   const { sandpack } = useSandpack();
   const { mutateAsync: submitSolution, isPending: isSubmitting } =
     api.judge.submit.useMutation();
+  const submissionProgress = api.judge.progress.useQuery(
+    { submissionId: submissionId ?? "" },
+    {
+      enabled: Boolean(submissionId),
+      refetchInterval:
+        submissionStage !== "idle" && submissionStage !== "done" ? 1200 : false,
+    },
+  );
 
   useEffect(() => {
     const now = Date.now();
@@ -127,12 +143,21 @@ export default function CodeRunner({
 
   const handleSubmit = useCallback(async () => {
     setSubmitMessage(null);
+    setSubmissionError(null);
+    const nextSubmissionId = crypto.randomUUID();
+    setSubmissionId(nextSubmissionId);
+    setSubmissionStage("tests");
     try {
-      await submitSolution({ problemId, files: sandpack.files });
+      await submitSolution({
+        problemId,
+        files: sandpack.files,
+        submissionId: nextSubmissionId,
+      });
       setSubmitMessage("Submission sent");
     } catch (error) {
       console.error(error);
       setSubmitMessage("Submission failed");
+      setSubmissionError("We hit an error while processing your submission.");
     }
   }, [problemId, sandpack.files, submitSolution]);
 
@@ -148,6 +173,28 @@ export default function CodeRunner({
   const handleCancelSubmit = useCallback(() => {
     setShowCaution(false);
   }, []);
+
+  const handleDismissSubmission = useCallback(() => {
+    setSubmissionError(null);
+    setSubmissionStage("idle");
+    setSubmissionId(null);
+  }, []);
+
+  useEffect(() => {
+    const progress = submissionProgress.data;
+    if (!progress) return;
+    setSubmissionError(progress.errorMessage);
+    setSubmissionStage(progress.stage);
+  }, [submissionProgress.data]);
+
+  useEffect(() => {
+    if (submissionStage !== "done") return;
+    const timeoutId = window.setTimeout(() => {
+      setSubmissionStage("idle");
+      setSubmissionId(null);
+    }, 1200);
+    return () => window.clearTimeout(timeoutId);
+  }, [submissionStage]);
 
   return (
     <div className="flex h-screen w-screen justify-center overflow-hidden">
@@ -200,6 +247,11 @@ export default function CodeRunner({
                   </div>
                 </div>
               )}
+              <SubmissionProgress
+                stage={submissionStage}
+                errorMessage={submissionError}
+                onDismiss={handleDismissSubmission}
+              />
               <header className="space-y-2 pb-4 md:pb-6">
                 <p className="text-primary text-sm font-semibold tracking-[0.2em] uppercase">
                   Playground

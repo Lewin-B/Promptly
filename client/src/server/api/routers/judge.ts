@@ -8,6 +8,12 @@ import { randomUUID } from "crypto";
 import { db } from "~/server/db";
 import { Problem } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
+import {
+  clearSubmissionProgress,
+  getSubmissionProgress,
+  type SubmissionStage,
+  updateSubmissionProgress,
+} from "~/server/submission-progress-store";
 
 const sandpackFileSchema = z.record(
   z.union([
@@ -66,151 +72,190 @@ export const judgeRouter = createTRPCRouter({
       z.object({
         problemId: z.number(),
         files: sandpackFileSchema,
+        submissionId: z.string().min(1),
       }),
     )
     .mutation(async ({ input }) => {
-      const normalizedFiles = normalizeSandpackFiles(input.files);
-      ensurePackageJsonMetadata(normalizedFiles);
-      const problem = await db
-        .select()
-        .from(Problem)
-        .where(eq(Problem.id, input.problemId))
-        .limit(1)
-        .then((rows) => rows[0] ?? null);
+      let currentStage: SubmissionStage = "tests";
+      updateSubmissionProgress(input.submissionId, currentStage, null);
 
-      console.log(`${env.AGENT_SERVER_URL}/test`);
-
-      const testAgentResponse = await fetch(`${env.AGENT_SERVER_URL}/test`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          method: "message/send",
-          id: randomUUID(),
-          params: {
-            configuration: {
-              blocking: true,
-            },
-            message: {
-              messageId: randomUUID(),
-              role: "user",
-              parts: [
-                {
-                  kind: "text",
-                  text: `Generate unit tests for problem ${problem?.name}. Use the provided files and problem description.`,
-                },
-                {
-                  kind: "data",
-                  data: {
-                    problemId: input.problemId,
-                    problemDescription: problem?.description ?? null,
-                    files: normalizedFiles,
-                  },
-                },
-              ],
-            },
-          },
-        }),
-      });
-
-      if (!testAgentResponse.ok) {
-        throw new Error(
-          `Test agent invoke failed: ${testAgentResponse.status}`,
-        );
-      }
-
-      const bodyText = await testAgentResponse.text();
-      const testFiles = parseTestAgentArtifacts(bodyText);
-      if (testFiles) {
-        Object.assign(normalizedFiles, testFiles);
-      }
-
-      console.log("normalized Files: ", normalizedFiles);
-
-      const tarArchive = await buildTarFromFiles(normalizedFiles);
-      const tarArchiveBase64 = tarArchive.toString("base64url");
-
-      // Build docker image
-      let deployResponse: DeployResponse | null = null;
-      let deployFetchOk = false;
       try {
-        const response = await fetch(`${env.AGENT_SERVER_URL}/deploy`, {
+        const normalizedFiles = normalizeSandpackFiles(input.files);
+        ensurePackageJsonMetadata(normalizedFiles);
+        const problem = await db
+          .select()
+          .from(Problem)
+          .where(eq(Problem.id, input.problemId))
+          .limit(1)
+          .then((rows) => rows[0] ?? null);
+
+        console.log(`${env.AGENT_SERVER_URL}/test`);
+
+        const testAgentResponse = await fetch(`${env.AGENT_SERVER_URL}/test`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            docker_file: REACT_DOCKER_FILE,
-            base64TarFile: tarArchiveBase64,
+            jsonrpc: "2.0",
+            method: "message/send",
+            id: randomUUID(),
+            params: {
+              configuration: {
+                blocking: true,
+              },
+              message: {
+                messageId: randomUUID(),
+                role: "user",
+                parts: [
+                  {
+                    kind: "text",
+                    text: `Generate unit tests for problem ${problem?.name}. Use the provided files and problem description.`,
+                  },
+                  {
+                    kind: "data",
+                    data: {
+                      problemId: input.problemId,
+                      problemDescription: problem?.description ?? null,
+                      files: normalizedFiles,
+                    },
+                  },
+                ],
+              },
+            },
           }),
         });
-        deployFetchOk = response.ok;
-        try {
-          deployResponse = (await response.json()) as DeployResponse;
-        } catch (error) {
-          console.warn("Failed to parse deploy response:", error);
+
+        if (!testAgentResponse.ok) {
+          throw new Error(
+            `Test agent invoke failed: ${testAgentResponse.status}`,
+          );
         }
-      } catch (error) {
-        console.warn("Deploy request failed:", error);
-      }
-      console.log("Deploy Response: ", deployResponse);
 
-      const analyzerResponse = await fetch(`${env.AGENT_SERVER_URL}/analyze`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          method: "message/send",
-          id: randomUUID(),
-          params: {
-            configuration: {
-              blocking: true,
+        const bodyText = await testAgentResponse.text();
+        const testFiles = parseTestAgentArtifacts(bodyText);
+        if (testFiles) {
+          Object.assign(normalizedFiles, testFiles);
+        }
+
+        console.log("normalized Files: ", normalizedFiles);
+
+        currentStage = "deploy";
+        updateSubmissionProgress(input.submissionId, currentStage, null);
+
+        const tarArchive = await buildTarFromFiles(normalizedFiles);
+        const tarArchiveBase64 = tarArchive.toString("base64url");
+
+        // Build docker image
+        let deployResponse: DeployResponse | null = null;
+        let deployFetchOk = false;
+        try {
+          const response = await fetch(`${env.AGENT_SERVER_URL}/deploy`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
             },
-            message: {
-              messageId: randomUUID(),
-              role: "user",
-              parts: [
-                {
-                  kind: "text",
-                  text: "Analyze the submission using the provided logs, files, and problem description.",
-                },
-                {
-                  kind: "data",
-                  data: {
-                    problemId: input.problemId,
-                    problemDescription: problem?.description ?? null,
-                    files: normalizedFiles,
-                    buildLogs: deployResponse?.build_logs ?? "",
-                  },
-                },
-              ],
+            body: JSON.stringify({
+              docker_file: REACT_DOCKER_FILE,
+              base64TarFile: tarArchiveBase64,
+            }),
+          });
+          deployFetchOk = response.ok;
+          try {
+            deployResponse = (await response.json()) as DeployResponse;
+          } catch (error) {
+            console.warn("Failed to parse deploy response:", error);
+          }
+        } catch (error) {
+          console.warn("Deploy request failed:", error);
+        }
+        console.log("Deploy Response: ", deployResponse);
+
+        currentStage = "analysis";
+        updateSubmissionProgress(input.submissionId, currentStage, null);
+
+        const analyzerResponse = await fetch(
+          `${env.AGENT_SERVER_URL}/analyze`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
             },
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              method: "message/send",
+              id: randomUUID(),
+              params: {
+                configuration: {
+                  blocking: true,
+                },
+                message: {
+                  messageId: randomUUID(),
+                  role: "user",
+                  parts: [
+                    {
+                      kind: "text",
+                      text: "Analyze the submission using the provided logs, files, and problem description.",
+                    },
+                    {
+                      kind: "data",
+                      data: {
+                        problemId: input.problemId,
+                        problemDescription: problem?.description ?? null,
+                        files: normalizedFiles,
+                        buildLogs: deployResponse?.build_logs ?? "",
+                      },
+                    },
+                  ],
+                },
+              },
+            }),
           },
-        }),
-      });
-
-      if (!analyzerResponse.ok) {
-        throw new Error(
-          `Analyzer agent invoke failed: ${analyzerResponse.status}`,
         );
+
+        if (!analyzerResponse.ok) {
+          throw new Error(
+            `Analyzer agent invoke failed: ${analyzerResponse.status}`,
+          );
+        }
+
+        const analyzerBodyText = await analyzerResponse.text();
+        const analyzerResult = parseAnalyzerResult(analyzerBodyText);
+
+        console.log("Analyzer result: ", analyzerResult);
+
+        updateSubmissionProgress(input.submissionId, "done", null);
+        setTimeout(() => {
+          clearSubmissionProgress(input.submissionId);
+        }, 5 * 60 * 1000);
+
+        return {
+          receivedFiles: Object.keys(input.files).length,
+          problemId: input.problemId,
+          buildFailed: deployResponse?.build_failed ?? !deployFetchOk,
+          buildLogs: deployResponse?.build_logs ?? "",
+          analysis: analyzerResult,
+        };
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Submission failed to process.";
+        updateSubmissionProgress(input.submissionId, currentStage, message);
+        setTimeout(() => {
+          clearSubmissionProgress(input.submissionId);
+        }, 5 * 60 * 1000);
+        throw error;
       }
-
-      const analyzerBodyText = await analyzerResponse.text();
-      const analyzerResult = parseAnalyzerResult(analyzerBodyText);
-
-      console.log("Analyzer result: ", analyzerResult);
-
-      return {
-        receivedFiles: Object.keys(input.files).length,
-        problemId: input.problemId,
-        buildFailed: deployResponse?.build_failed ?? !deployFetchOk,
-        buildLogs: deployResponse?.build_logs ?? "",
-        analysis: analyzerResult,
-      };
+    }),
+  progress: publicProcedure
+    .input(
+      z.object({
+        submissionId: z.string().min(1),
+      }),
+    )
+    .query(({ input }) => {
+      return getSubmissionProgress(input.submissionId);
     }),
 });
 
