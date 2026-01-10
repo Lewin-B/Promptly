@@ -64,32 +64,32 @@ func startJudgeAgentServer() string {
 
 	go func() {
 		ctx := context.Background()
-		dockerAgent := app.NewDockerAgent(ctx)
-		plannerAgent := app.NewPlannerAgent(ctx)
-		orchestratorAgent := app.NewOrchestratorAgent(ctx, dockerAgent, plannerAgent)
+		testAgent := app.NewTestAgent(ctx)
 
-		agentPath := "/invoke"
-		orchestratorAgentCard := &a2a.AgentCard{
-			Name:               orchestratorAgent.Name(),
-			Skills:             adka2a.BuildAgentSkills(orchestratorAgent),
+		agentPath := "/test"
+		testAgentCard := &a2a.AgentCard{
+			Name:               testAgent.Name(),
+			Skills:             adka2a.BuildAgentSkills(testAgent),
 			PreferredTransport: a2a.TransportProtocolJSONRPC,
 			URL:                baseURL.JoinPath(agentPath).String(),
 			Capabilities:       a2a.AgentCapabilities{Streaming: true},
 		}
 
 		mux := http.NewServeMux()
-		mux.Handle(a2asrv.WellKnownAgentCardPath, a2asrv.NewStaticAgentCardHandler(orchestratorAgentCard))
+		mux.Handle(a2asrv.WellKnownAgentCardPath, a2asrv.NewStaticAgentCardHandler(testAgentCard))
 
-		orchestratorExecutor := adka2a.NewExecutor(adka2a.ExecutorConfig{
+		testExecutor := adka2a.NewExecutor(adka2a.ExecutorConfig{
 			RunnerConfig: runner.Config{
-				AppName:        orchestratorAgent.Name(),
-				Agent:          orchestratorAgent,
+				AppName:        testAgent.Name(),
+				Agent:          testAgent,
 				SessionService: session.InMemoryService(),
 			},
 		})
 
-		orchestratorRequestHandler := a2asrv.NewHandler(orchestratorExecutor)
-		mux.Handle(agentPath, a2asrv.NewJSONRPCHandler(orchestratorRequestHandler))
+		testRequestHandler := a2asrv.NewHandler(testExecutor)
+		testJSONRPCHandler := a2asrv.NewJSONRPCHandler(testRequestHandler)
+		mux.Handle(agentPath, testJSONRPCHandler)
+		mux.Handle(agentPath+"/", testJSONRPCHandler)
 		mux.HandleFunc("/deploy", func(w http.ResponseWriter, r *http.Request) {
 			handleDeploy(w, r)
 		})
