@@ -37,6 +37,7 @@ export default function CodeRunner({
   const [testsPassing, setTestsPassing] = useState(false);
   const [timeLeft, setTimeLeft] = useState(15 * 60);
   const [submitMessage, setSubmitMessage] = useState<string | null>(null);
+  const [showCaution, setShowCaution] = useState(false);
   const sessionEndRef = useRef<number | null>(null);
   const { sandpack } = useSandpack();
   const { mutateAsync: submitSolution, isPending: isSubmitting } =
@@ -135,6 +136,19 @@ export default function CodeRunner({
     }
   }, [problemId, sandpack.files, submitSolution]);
 
+  const handleBeginSubmit = useCallback(() => {
+    setShowCaution(true);
+  }, []);
+
+  const handleConfirmSubmit = useCallback(async () => {
+    setShowCaution(false);
+    await handleSubmit();
+  }, [handleSubmit]);
+
+  const handleCancelSubmit = useCallback(() => {
+    setShowCaution(false);
+  }, []);
+
   return (
     <div className="flex h-screen w-screen justify-center overflow-hidden">
       <ResizablePanelGroup direction="horizontal" className="h-screen w-full">
@@ -151,7 +165,41 @@ export default function CodeRunner({
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={74} minSize={60}>
           <main className="relative flex h-full w-full flex-col overflow-hidden bg-[radial-gradient(120%_120%_at_50%_0%,rgba(59,130,246,0.08),rgba(15,23,42,0)_60%)] p-3 md:p-4">
-            <div className="bg-card ring-border/60 flex h-full flex-col rounded-2xl border p-3 shadow-[0_20px_60px_-30px_rgba(15,23,42,0.35)] ring-1 backdrop-blur md:p-4">
+            <div className="bg-card ring-border/60 relative flex h-full flex-col rounded-2xl border p-3 shadow-[0_20px_60px_-30px_rgba(15,23,42,0.35)] ring-1 backdrop-blur md:p-4">
+              {showCaution && (
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/50 px-4">
+                  <div className="bg-card w-full max-w-lg rounded-2xl border border-slate-200/70 p-6 shadow-xl">
+                    <p className="text-amber-600 text-xs font-semibold tracking-[0.2em] uppercase">
+                      Caution
+                    </p>
+                    <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
+                      Ready to submit your solution?
+                    </h2>
+                    <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                      Submissions are final and will be graded on the latest
+                      code in your editor. Double-check your tests and preview
+                      before continuing.
+                    </p>
+                    <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleCancelSubmit}
+                        disabled={isSubmitting}
+                      >
+                        Review again
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={handleConfirmSubmit}
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? "Submitting..." : "Submit anyway"}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
               <header className="space-y-2 pb-4 md:pb-6">
                 <p className="text-primary text-sm font-semibold tracking-[0.2em] uppercase">
                   Playground
@@ -202,7 +250,7 @@ export default function CodeRunner({
                           <TestTube className="h-4 w-4" /> Tests
                         </SandboxTabsTrigger>
                       </div>
-                      <div className="ml-auto flex items-center gap-3">
+                      <div className="ml-auto flex items-center gap-3 pr-10">
                         {submitMessage && (
                           <span className="text-muted-foreground text-[11px] font-semibold tracking-[0.18em] uppercase">
                             {submitMessage}
@@ -215,8 +263,8 @@ export default function CodeRunner({
                         <Button
                           type="button"
                           size="sm"
-                          onClick={handleSubmit}
-                          disabled={isSubmitting}
+                          onClick={handleBeginSubmit}
+                          disabled={isSubmitting || !testsPassing}
                         >
                           {isSubmitting ? "Submitting..." : "Submit"}
                         </Button>
