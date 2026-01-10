@@ -18,7 +18,7 @@ export default function Problems() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-slate-50 via-white to-slate-100 p-6">
+    <div className="min-h-screen p-6">
       <div className="mx-auto w-full max-w-3xl">
         <div className="mb-6 flex items-center justify-between">
           <div>

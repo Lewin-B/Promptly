@@ -29,15 +29,12 @@ const languageCards = [
 export default function About() {
   return (
     <section className="text-foreground relative w-full px-6 py-16 sm:py-20">
-      <div className="to-primary/30 from-primary/20 pointer-events-none absolute inset-0 -z-10 bg-linear-to-br via-white" />
+      <div className="to-primary/10 from-primary/20 pointer-events-none absolute inset-0 -z-10 bg-linear-to-br via-white" />
       <div className="pointer-events-none absolute top-16 -left-10 h-32 w-32 rounded-full bg-amber-200/40 blur-2xl motion-safe:animate-pulse" />
       <div className="pointer-events-none absolute -right-10 bottom-10 h-36 w-36 rounded-full bg-cyan-200/40 blur-2xl motion-safe:animate-pulse" />
 
       <div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-10 text-center">
         <div className="space-y-4">
-          <p className="text-xs font-semibold tracking-[0.3em] text-slate-500 uppercase">
-            The playground
-          </p>
           <h1 className="text-4xl font-black tracking-tight text-balance text-slate-900 sm:text-5xl lg:text-6xl">
             A new way to learn
           </h1>
