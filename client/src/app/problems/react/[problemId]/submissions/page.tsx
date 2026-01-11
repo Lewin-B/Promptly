@@ -24,23 +24,31 @@ export default async function ProblemSubmissionsPage({
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 px-6 py-10">
+    <div className="flex min-h-screen w-full justify-center bg-[radial-gradient(120%_120%_at_50%_0%,rgba(59,130,246,0.08),rgba(15,23,42,0)_60%)] px-6 py-12">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-        <section className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <p className="text-muted-foreground text-xs font-semibold tracking-[0.2em] uppercase">
+        <section className="bg-card ring-border/60 rounded-2xl border p-6 shadow-[0_20px_60px_-30px_rgba(15,23,42,0.2)] ring-1 backdrop-blur">
+          <p className="text-xs font-semibold tracking-[0.4em] text-slate-500 uppercase">
             Problem {data.problem.id}
           </p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900 md:text-4xl">
             {data.problem.name} submissions
           </h1>
-          <p className="text-muted-foreground mt-3 text-sm">
-            Review past results and open a submission for the full analyzer
-            report.
+          <p className="mt-3 max-w-2xl text-sm text-slate-600">
+            Review past results, compare the analyzer scores, and open a
+            submission for the full breakdown.
           </p>
+          <div className="mt-5 flex flex-wrap gap-3 text-xs font-semibold tracking-[0.28em] text-slate-500 uppercase">
+            <span className="rounded-full border border-slate-200/70 bg-white px-3 py-1">
+              Total {data.submissions.length}
+            </span>
+            <span className="rounded-full border border-slate-200/70 bg-white px-3 py-1">
+              Latest first
+            </span>
+          </div>
         </section>
 
         {data.submissions.length === 0 ? (
-          <section className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+          <section className="bg-card ring-border/60 rounded-2xl border p-8 shadow-[0_18px_45px_-30px_rgba(15,23,42,0.16)] ring-1 backdrop-blur">
             <p className="text-sm text-slate-600">
               No submissions yet. Submit a solution to see results here.
             </p>
@@ -77,7 +85,7 @@ export default async function ProblemSubmissionsPage({
                 <Link
                   key={submission.id}
                   href={`/submissions/${submission.id}`}
-                  className="group rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
+                  className="group bg-card ring-border/60 relative overflow-hidden rounded-2xl border p-5 shadow-[0_16px_40px_-28px_rgba(15,23,42,0.16)] ring-1 transition hover:-translate-y-1 hover:border-slate-300 hover:shadow-[0_26px_60px_-35px_rgba(15,23,42,0.2)]"
                 >
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-slate-900">
@@ -101,12 +109,11 @@ export default async function ProblemSubmissionsPage({
                       {averageScore ?? "N/A"}
                     </span>
                   </div>
-                  <p className="text-muted-foreground mt-3 text-xs">
-                    {analysis?.overallVerdict
-                      ? analysis.overallVerdict
-                      : "Analyzer output unavailable for this submission."}
+                  <p className="mt-3 text-xs text-slate-600">
+                    {analysis?.overallVerdict ??
+                      "Analyzer output unavailable for this submission."}
                   </p>
-                  <div className="mt-4 text-xs font-semibold tracking-[0.2em] text-slate-500 uppercase">
+                  <div className="mt-4 text-xs font-semibold tracking-[0.3em] text-slate-500 uppercase">
                     View details
                   </div>
                 </Link>

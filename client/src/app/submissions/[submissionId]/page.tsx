@@ -41,34 +41,38 @@ export default async function SubmissionPage({
     submission.status === "success" ? "bg-emerald-50" : "bg-rose-50";
 
   return (
-    <div className="min-h-screen bg-slate-50 px-6 py-10">
+    <div className="flex min-h-screen w-full justify-center bg-[radial-gradient(120%_120%_at_50%_0%,rgba(59,130,246,0.08),rgba(15,23,42,0)_60%)] px-6 py-12">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-        <section className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
-          <p className="text-muted-foreground text-xs font-semibold tracking-[0.2em] uppercase">
+        <section className="bg-card ring-border/60 rounded-2xl border p-6 shadow-[0_20px_60px_-30px_rgba(15,23,42,0.2)] ring-1 backdrop-blur">
+          <p className="text-xs font-semibold tracking-[0.4em] uppercase text-slate-500">
             Submission {submission.id}
           </p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900 md:text-4xl">
             Submission results
           </h1>
-          <div className="mt-5 grid gap-4 sm:grid-cols-3">
-            <div className="rounded-xl border border-slate-200/70 bg-slate-50/60 p-4">
-              <p className="text-muted-foreground text-xs uppercase">
+          <p className="mt-3 max-w-2xl text-sm text-slate-600">
+            Full analyzer report with scores, rationale, and the overall verdict
+            for your latest solution.
+          </p>
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            <div className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
+              <p className="text-xs uppercase text-slate-500">
                 Problem ID
               </p>
               <p className="mt-2 text-lg font-semibold text-slate-900">
                 {submission.problemId ?? "Unknown"}
               </p>
             </div>
-            <div className="rounded-xl border border-slate-200/70 bg-slate-50/60 p-4">
-              <p className="text-muted-foreground text-xs uppercase">Status</p>
+            <div className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
+              <p className="text-xs uppercase text-slate-500">Status</p>
               <p
                 className={`mt-2 inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold ${statusTone} ${statusBg}`}
               >
                 {submission.status}
               </p>
             </div>
-            <div className="rounded-xl border border-slate-200/70 bg-slate-50/60 p-4">
-              <p className="text-muted-foreground text-xs uppercase">
+            <div className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
+              <p className="text-xs uppercase text-slate-500">
                 Average score
               </p>
               <p className="mt-2 text-lg font-semibold text-slate-900">
@@ -79,11 +83,11 @@ export default async function SubmissionPage({
         </section>
 
         {!analysis ? (
-          <section className="rounded-2xl border border-amber-200/70 bg-amber-50/60 p-6">
-            <h2 className="text-lg font-semibold text-amber-800">
+          <section className="rounded-2xl border border-amber-200/70 bg-amber-50/70 p-6">
+            <h2 className="text-lg font-semibold text-amber-900">
               Analysis unavailable
             </h2>
-            <p className="mt-2 text-sm text-amber-700">
+            <p className="mt-2 text-sm text-amber-800">
               We could not parse the analyzer output for this submission. Check
               back later or resubmit.
             </p>
@@ -115,7 +119,7 @@ export default async function SubmissionPage({
               ].map((item) => (
                 <div
                   key={item.title}
-                  className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm"
+                  className="bg-card ring-border/60 rounded-2xl border p-5 shadow-[0_16px_40px_-28px_rgba(15,23,42,0.16)] ring-1"
                 >
                   <div className="flex items-center justify-between">
                     <h2 className="text-lg font-semibold text-slate-900">
@@ -127,18 +131,18 @@ export default async function SubmissionPage({
                       {item.score}
                     </span>
                   </div>
-                  <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                  <p className="mt-3 text-sm leading-relaxed text-slate-600">
                     {item.rationale}
                   </p>
                 </div>
               ))}
             </section>
 
-            <section className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+            <section className="bg-card ring-border/60 rounded-2xl border p-6 shadow-[0_16px_40px_-28px_rgba(15,23,42,0.16)] ring-1">
               <h2 className="text-lg font-semibold text-slate-900">
                 Overall verdict
               </h2>
-              <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+              <p className="mt-3 text-sm leading-relaxed text-slate-600">
                 {analysis.overallVerdict}
               </p>
             </section>
