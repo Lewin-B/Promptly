@@ -7,7 +7,7 @@ import { env } from "~/env";
 import { randomUUID } from "crypto";
 import { db } from "~/server/db";
 import { Problem, Submission } from "~/server/db/schema";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import {
   clearSubmissionProgress,
   getSubmissionProgress,
@@ -303,6 +303,27 @@ export const judgeRouter = createTRPCRouter({
         ...row.submission,
         problem: row.problem,
       };
+    }),
+  submissionsForProblem: publicProcedure
+    .input(
+      z.object({
+        problemId: z.number(),
+      }),
+    )
+    .query(async ({ input }) => {
+      const [problem] = await db
+        .select()
+        .from(Problem)
+        .where(eq(Problem.id, input.problemId))
+        .limit(1);
+
+      const submissions = await db
+        .select()
+        .from(Submission)
+        .where(eq(Submission.problemId, input.problemId))
+        .orderBy(desc(Submission.id));
+
+      return { problem: problem ?? null, submissions };
     }),
 });
 

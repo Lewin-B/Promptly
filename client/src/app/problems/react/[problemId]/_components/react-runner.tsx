@@ -16,6 +16,7 @@ import { CheckCircle2, Files, TestTube, Wallpaper } from "lucide-react";
 import { useSandpack, type SandpackFiles } from "@codesandbox/sandpack-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 import { AssistantSidebar, type ChatMessage } from "./assistant-sidebar";
 import type { ProblemDescriptionProps } from "./problem-description";
@@ -322,6 +323,16 @@ export default function CodeRunner({
                           Session{" "}
                           {`${String(Math.floor(timeLeft / 60)).padStart(2, "0")}:${String(timeLeft % 60).padStart(2, "0")}`}
                         </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          asChild
+                        >
+                          <Link href={`/problems/react/${problemId}/submissions`}>
+                            Submissions
+                          </Link>
+                        </Button>
                         <Button
                           type="button"
                           size="sm"
