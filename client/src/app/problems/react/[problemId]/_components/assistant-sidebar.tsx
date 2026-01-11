@@ -52,7 +52,7 @@ export function AssistantSidebar({
   const [messages, setMessages] = useState<ChatMessage[]>(defaultMessages);
   const [input, setInput] = useState("");
   const [lastApplied, setLastApplied] = useState<string[]>([]);
-  const [model, setModel] = useState<AiModel>("deepseek");
+  const [model, setModel] = useState<AiModel>("gpt-oss");
   const [tokensUsed, setTokensUsed] = useState(0);
   const TOKEN_THRESHOLD = parseInt(
     (problemDescription.data?.description?.aiConstraints ?? "").replace(
