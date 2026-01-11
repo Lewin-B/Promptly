@@ -28,9 +28,9 @@ type FileUpdate = RouterOutputs["assistant"]["assist"]["files"][number];
 type AiModel = RouterInputs["assistant"]["assist"]["model"];
 
 const MODEL_OPTIONS: Array<{ value: AiModel; label: string }> = [
+  { value: "gpt-oss", label: "GPT-OSS-120b" },
   { value: "deepseek", label: "Deepseek V3" },
   { value: "kimi-k2", label: "Kimi K2 Instruct" },
-  { value: "gpt-oss", label: "GPT-OSS-120b" },
 ];
 
 type AssistantSidebarProps = {
