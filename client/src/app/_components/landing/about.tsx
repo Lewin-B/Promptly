@@ -28,7 +28,10 @@ const languageCards = [
 
 export default function About() {
   return (
-    <section className="text-foreground relative w-full px-6 py-16 sm:py-20">
+    <section
+      id="about"
+      className="text-foreground relative w-full scroll-mt-24 px-6 py-16 sm:py-20"
+    >
       <div className="to-primary/10 from-primary/20 pointer-events-none absolute inset-0 -z-10 bg-linear-to-br via-white" />
       <div className="pointer-events-none absolute top-16 -left-10 h-32 w-32 rounded-full bg-amber-200/40 blur-2xl motion-safe:animate-pulse" />
       <div className="pointer-events-none absolute -right-10 bottom-10 h-36 w-36 rounded-full bg-cyan-200/40 blur-2xl motion-safe:animate-pulse" />
