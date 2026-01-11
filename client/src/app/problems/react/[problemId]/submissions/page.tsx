@@ -11,9 +11,10 @@ function getScoreTone(score: number) {
 export default async function ProblemSubmissionsPage({
   params,
 }: {
-  params: { problemId: string };
+  params: Promise<{ problemId: string }>;
 }) {
-  const problemId = Number(params.problemId);
+  const { problemId: problemIdParam } = await params;
+  const problemId = Number(problemIdParam);
   if (!Number.isFinite(problemId)) {
     notFound();
   }

@@ -10,9 +10,10 @@ function getScoreTone(score: number) {
 export default async function SubmissionPage({
   params,
 }: {
-  params: { submissionId: string };
+  params: Promise<{ submissionId: string }>;
 }) {
-  const submissionId = Number(params.submissionId);
+  const { submissionId: submissionIdParam } = await params;
+  const submissionId = Number(submissionIdParam);
   if (!Number.isFinite(submissionId)) {
     notFound();
   }
@@ -33,7 +34,9 @@ export default async function SubmissionPage({
     : [];
   const averageScore =
     scores.length > 0
-      ? Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length)
+      ? Math.round(
+          scores.reduce((sum, value) => sum + value, 0) / scores.length,
+        )
       : null;
   const statusTone =
     submission.status === "success" ? "text-emerald-600" : "text-rose-600";
@@ -44,7 +47,7 @@ export default async function SubmissionPage({
     <div className="flex min-h-screen w-full justify-center bg-[radial-gradient(120%_120%_at_50%_0%,rgba(59,130,246,0.08),rgba(15,23,42,0)_60%)] px-6 py-12">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
         <section className="bg-card ring-border/60 rounded-2xl border p-6 shadow-[0_20px_60px_-30px_rgba(15,23,42,0.2)] ring-1 backdrop-blur">
-          <p className="text-xs font-semibold tracking-[0.4em] uppercase text-slate-500">
+          <p className="text-xs font-semibold tracking-[0.4em] text-slate-500 uppercase">
             Submission {submission.id}
           </p>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900 md:text-4xl">
@@ -56,15 +59,13 @@ export default async function SubmissionPage({
           </p>
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
             <div className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
-              <p className="text-xs uppercase text-slate-500">
-                Problem ID
-              </p>
+              <p className="text-xs text-slate-500 uppercase">Problem ID</p>
               <p className="mt-2 text-lg font-semibold text-slate-900">
                 {submission.problemId ?? "Unknown"}
               </p>
             </div>
             <div className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
-              <p className="text-xs uppercase text-slate-500">Status</p>
+              <p className="text-xs text-slate-500 uppercase">Status</p>
               <p
                 className={`mt-2 inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold ${statusTone} ${statusBg}`}
               >
@@ -72,9 +73,7 @@ export default async function SubmissionPage({
               </p>
             </div>
             <div className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
-              <p className="text-xs uppercase text-slate-500">
-                Average score
-              </p>
+              <p className="text-xs text-slate-500 uppercase">Average score</p>
               <p className="mt-2 text-lg font-semibold text-slate-900">
                 {averageScore ?? "N/A"}
               </p>
