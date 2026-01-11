@@ -28,9 +28,8 @@ type FileUpdate = RouterOutputs["assistant"]["assist"]["files"][number];
 type AiModel = RouterInputs["assistant"]["assist"]["model"];
 
 const MODEL_OPTIONS: Array<{ value: AiModel; label: string }> = [
-  { value: "qwen3-coder", label: "Qwen3 Coder" },
-  { value: "kimi-k2", label: "Kimi K2 Instruct" },
   { value: "deepseek", label: "Deepseek V3" },
+  { value: "kimi-k2", label: "Kimi K2 Instruct" },
   { value: "gpt-oss", label: "GPT-OSS-120b" },
 ];
 
@@ -53,7 +52,7 @@ export function AssistantSidebar({
   const [messages, setMessages] = useState<ChatMessage[]>(defaultMessages);
   const [input, setInput] = useState("");
   const [lastApplied, setLastApplied] = useState<string[]>([]);
-  const [model, setModel] = useState<AiModel>("qwen3-coder");
+  const [model, setModel] = useState<AiModel>("deepseek");
   const [tokensUsed, setTokensUsed] = useState(0);
   const TOKEN_THRESHOLD = parseInt(
     (problemDescription.data?.description?.aiConstraints ?? "").replace(
@@ -109,8 +108,7 @@ export function AssistantSidebar({
         ...nextMessages,
         {
           role: "assistant",
-          content:
-            "I hit an error talking to the Together AI backend. Please try again or adjust your prompt.",
+          content: "I hit an error. Please try again or adjust your prompt.",
         },
       ]);
       console.error(error);
@@ -245,7 +243,7 @@ export function AssistantSidebar({
           )}
           {isTokenLimitReached && (
             <div className="text-destructive bg-destructive/10 rounded-md border border-dashed p-2 text-xs">
-              Token limit reached. Clear chat to reset the counter.
+              Token limit reached.
             </div>
           )}
 
