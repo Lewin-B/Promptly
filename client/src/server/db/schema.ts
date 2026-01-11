@@ -9,6 +9,7 @@ import {
   jsonb,
   pgEnum,
 } from "drizzle-orm/pg-core";
+import type { AnalyzerResult } from "~/server/types/analysis";
 
 export const createTable = pgTableCreator((name) => `promptly_${name}`);
 
@@ -136,4 +137,5 @@ export const Submission = createTable("submission", {
   submittedCode: jsonb("submitted_code").$type<CodeContent>().notNull(),
   status: statusEnum("status").notNull(),
   chatHistory: jsonb("chat_history").notNull(),
+  analysis: jsonb("analysis").$type<AnalyzerResult | null>(),
 });

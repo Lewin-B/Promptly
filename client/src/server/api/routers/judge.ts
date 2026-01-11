@@ -1,12 +1,12 @@
 import { z } from "zod";
-import { createTRPCRouter, publicProcedure } from "../trpc";
+import { createTRPCRouter, publicProcedure, protectedProcedure } from "../trpc";
 import tar from "tar-stream";
 import type { SandpackFiles } from "@codesandbox/sandpack-react";
 import { fetch } from "undici";
 import { env } from "~/env";
 import { randomUUID } from "crypto";
 import { db } from "~/server/db";
-import { Problem } from "~/server/db/schema";
+import { Problem, Submission } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
 import {
   clearSubmissionProgress,
@@ -14,6 +14,7 @@ import {
   type SubmissionStage,
   updateSubmissionProgress,
 } from "~/server/submission-progress-store";
+import type { AnalyzerResult } from "~/server/types/analysis";
 
 const sandpackFileSchema = z.record(
   z.union([
@@ -38,13 +39,7 @@ export interface DeployResponse {
   build_logs: string;
   build_failed: boolean;
 }
-export interface AnalyzerResponse {
-  codeQuality: { score: number; rationale: string };
-  functionality: { score: number; rationale: string };
-  productionAbility: { score: number; rationale: string };
-  chatHistory: { score: number; rationale: string };
-  overallVerdict: string;
-}
+export type AnalyzerResponse = AnalyzerResult;
 
 const REACT_DOCKER_FILE = `FROM node:18-bullseye
 
@@ -72,7 +67,7 @@ CMD ["serve", "-s", "build", "-l", "3000"]
 `;
 
 export const judgeRouter = createTRPCRouter({
-  submit: publicProcedure
+  submit: protectedProcedure
     .input(
       z.object({
         problemId: z.number(),
@@ -231,17 +226,34 @@ export const judgeRouter = createTRPCRouter({
 
         console.log("Analyzer result: ", analyzerResult);
 
+        const buildFailed = deployResponse?.build_failed ?? !deployFetchOk;
+        const [submission] = await db
+          .insert(Submission)
+          .values({
+            problemId: input.problemId,
+            accountId: null,
+            submittedCode: normalizedFiles,
+            status: buildFailed || !analyzerResult ? "failure" : "success",
+            chatHistory: input.chatHistory,
+            analysis: analyzerResult,
+          })
+          .returning({ id: Submission.id });
+
         updateSubmissionProgress(input.submissionId, "done", null);
-        setTimeout(() => {
-          clearSubmissionProgress(input.submissionId);
-        }, 5 * 60 * 1000);
+        setTimeout(
+          () => {
+            clearSubmissionProgress(input.submissionId);
+          },
+          5 * 60 * 1000,
+        );
 
         return {
           receivedFiles: Object.keys(input.files).length,
           problemId: input.problemId,
-          buildFailed: deployResponse?.build_failed ?? !deployFetchOk,
+          buildFailed,
           buildLogs: deployResponse?.build_logs ?? "",
           analysis: analyzerResult,
+          submissionRecordId: submission?.id ?? null,
         };
       } catch (error) {
         const message =
@@ -249,9 +261,12 @@ export const judgeRouter = createTRPCRouter({
             ? error.message
             : "Submission failed to process.";
         updateSubmissionProgress(input.submissionId, currentStage, message);
-        setTimeout(() => {
-          clearSubmissionProgress(input.submissionId);
-        }, 5 * 60 * 1000);
+        setTimeout(
+          () => {
+            clearSubmissionProgress(input.submissionId);
+          },
+          5 * 60 * 1000,
+        );
         throw error;
       }
     }),
@@ -263,6 +278,31 @@ export const judgeRouter = createTRPCRouter({
     )
     .query(({ input }) => {
       return getSubmissionProgress(input.submissionId);
+    }),
+  submission: publicProcedure
+    .input(
+      z.object({
+        submissionId: z.number(),
+      }),
+    )
+    .query(async ({ input }) => {
+      const rows = await db
+        .select({
+          submission: Submission,
+          problem: Problem,
+        })
+        .from(Submission)
+        .leftJoin(Problem, eq(Submission.problemId, Problem.id))
+        .where(eq(Submission.id, input.submissionId))
+        .limit(1);
+
+      const row = rows[0];
+      if (!row) return null;
+
+      return {
+        ...row.submission,
+        problem: row.problem,
+      };
     }),
 });
 

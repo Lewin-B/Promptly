@@ -15,6 +15,7 @@ import { CheckCircle2, Files, TestTube, Wallpaper } from "lucide-react";
 
 import { useSandpack, type SandpackFiles } from "@codesandbox/sandpack-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { AssistantSidebar, type ChatMessage } from "./assistant-sidebar";
 import type { ProblemDescriptionProps } from "./problem-description";
@@ -49,6 +50,7 @@ export default function CodeRunner({
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const sessionEndRef = useRef<number | null>(null);
   const { sandpack } = useSandpack();
+  const router = useRouter();
   const { mutateAsync: submitSolution, isPending: isSubmitting } =
     api.judge.submit.useMutation();
   const submissionProgress = api.judge.progress.useQuery(
@@ -149,19 +151,22 @@ export default function CodeRunner({
     setSubmissionId(nextSubmissionId);
     setSubmissionStage("tests");
     try {
-      await submitSolution({
+      const response = await submitSolution({
         problemId,
         files: sandpack.files,
         submissionId: nextSubmissionId,
         chatHistory,
       });
       setSubmitMessage("Submission sent");
+      if (response?.submissionRecordId) {
+        router.push(`/submissions/${response.submissionRecordId}`);
+      }
     } catch (error) {
       console.error(error);
       setSubmitMessage("Submission failed");
       setSubmissionError("We hit an error while processing your submission.");
     }
-  }, [problemId, sandpack.files, submitSolution, chatHistory]);
+  }, [problemId, sandpack.files, submitSolution, chatHistory, router]);
 
   const handleBeginSubmit = useCallback(() => {
     setShowCaution(true);

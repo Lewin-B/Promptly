@@ -98,7 +98,11 @@ export const assistantRouter = createTRPCRouter({
       const parsed = tryParseJson(text);
 
       if (!parsed) {
-        return { reply: "Error generating a response", files: [] };
+        return {
+          reply: text?.trim() || "I could not generate a response.",
+          files: [],
+          tokens_used: tokens,
+        };
       }
 
       const files =
@@ -141,9 +145,15 @@ function normalizePath(path?: string) {
 function tryParseJson(text: unknown) {
   if (typeof text !== "string") return null;
 
+  const trimmed = text.trim();
+  const unwrapped = trimmed
+    .replace(/^```(?:json)?/i, "")
+    .replace(/```$/, "")
+    .trim();
+
   // Prefer the first JSON object in the string if the model wrapped it.
-  const match = /\{[\s\S]*\}/.exec(text);
-  const candidate = match ? match[0] : text;
+  const match = /\{[\s\S]*\}/.exec(unwrapped);
+  const candidate = match ? match[0] : unwrapped;
 
   try {
     return JSON.parse(candidate) as Candidate;
