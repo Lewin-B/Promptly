@@ -334,6 +334,48 @@ export const judgeRouter = createTRPCRouter({
 
       return { problem: problem ?? null, submissions };
     }),
+  submissionsByUser: protectedProcedure.query(async ({ ctx }) => {
+    const [userAccount] = await db
+      .select({ id: account.id })
+      .from(account)
+      .where(eq(account.userId, ctx.session.user.id))
+      .limit(1);
+
+    if (!userAccount?.id) {
+      return { problems: [] };
+    }
+
+    const rows = await db
+      .select({
+        submission: Submission,
+        problem: Problem,
+      })
+      .from(Submission)
+      .leftJoin(Problem, eq(Submission.problemId, Problem.id))
+      .where(eq(Submission.accountId, userAccount.id))
+      .orderBy(desc(Submission.id));
+
+    type ProblemGroup = {
+      problem: typeof Problem.$inferSelect;
+      submissions: typeof Submission.$inferSelect[];
+    };
+    const grouped = new Map<number, ProblemGroup>();
+
+    for (const row of rows) {
+      if (!row.problem) continue;
+      const existing = grouped.get(row.problem.id);
+      if (existing) {
+        existing.submissions.push(row.submission);
+      } else {
+        grouped.set(row.problem.id, {
+          problem: row.problem,
+          submissions: [row.submission],
+        });
+      }
+    }
+
+    return { problems: [...grouped.values()] };
+  }),
 });
 
 function normalizeSandpackFiles(

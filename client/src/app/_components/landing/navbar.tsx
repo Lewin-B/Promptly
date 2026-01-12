@@ -8,17 +8,16 @@ import Image from "next/image";
 import { Button } from "~/components/ui/button";
 import { authClient } from "~/server/better-auth/client";
 
-const navLinks = [
-  { label: "About", href: "/#about" },
-  { label: "Problems", href: "/problems" },
-  { label: "React", href: "/problems/react" },
-];
+const baseNavLinks = [{ label: "Problems", href: "/problems" }];
 
 export default function Navbar() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const { data: session } = authClient.useSession();
   const user = session?.user ?? null;
+  const navLinks = user
+    ? [...baseNavLinks, { label: "Profile", href: "/profile" }]
+    : baseNavLinks;
 
   const initials = useMemo(() => {
     const fallback = "P";
