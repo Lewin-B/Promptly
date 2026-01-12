@@ -281,7 +281,7 @@ export function AssistantSidebar({
               ) : (
                 <>
                   <Send className="mr-2 h-4 w-4" />
-                  Send to {model}
+                  Ask {model}
                 </>
               )}
             </Button>

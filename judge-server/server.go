@@ -66,29 +66,20 @@ func startJudgeAgentServer() string {
 
 	go func() {
 		ctx := context.Background()
-		testAgent := app.NewTestAgent(ctx)
 		analyzerAgent := app.NewAnalyzerAgent(ctx)
 
-		agentPath := "/test"
 		analyzerPath := "/analyze"
-		testAgentCard := &a2a.AgentCard{
-			Name:               testAgent.Name(),
-			Skills:             adka2a.BuildAgentSkills(testAgent),
+		analyzerAgentCard := &a2a.AgentCard{
+			Name:               analyzerAgent.Name(),
+			Skills:             adka2a.BuildAgentSkills(analyzerAgent),
 			PreferredTransport: a2a.TransportProtocolJSONRPC,
-			URL:                baseURL.JoinPath(agentPath).String(),
+			URL:                baseURL.JoinPath(analyzerPath).String(),
 			Capabilities:       a2a.AgentCapabilities{Streaming: true},
 		}
 
 		mux := http.NewServeMux()
-		mux.Handle(a2asrv.WellKnownAgentCardPath, a2asrv.NewStaticAgentCardHandler(testAgentCard))
+		mux.Handle(a2asrv.WellKnownAgentCardPath, a2asrv.NewStaticAgentCardHandler(analyzerAgentCard))
 
-		testExecutor := adka2a.NewExecutor(adka2a.ExecutorConfig{
-			RunnerConfig: runner.Config{
-				AppName:        testAgent.Name(),
-				Agent:          testAgent,
-				SessionService: session.InMemoryService(),
-			},
-		})
 		analyzerExecutor := adka2a.NewExecutor(adka2a.ExecutorConfig{
 			RunnerConfig: runner.Config{
 				AppName:        analyzerAgent.Name(),
@@ -97,10 +88,6 @@ func startJudgeAgentServer() string {
 			},
 		})
 
-		testRequestHandler := a2asrv.NewHandler(testExecutor)
-		testJSONRPCHandler := a2asrv.NewJSONRPCHandler(testRequestHandler)
-		mux.Handle(agentPath, testJSONRPCHandler)
-		mux.Handle(agentPath+"/", testJSONRPCHandler)
 		analyzerRequestHandler := a2asrv.NewHandler(analyzerExecutor)
 		analyzerJSONRPCHandler := a2asrv.NewJSONRPCHandler(analyzerRequestHandler)
 		mux.Handle(analyzerPath, analyzerJSONRPCHandler)

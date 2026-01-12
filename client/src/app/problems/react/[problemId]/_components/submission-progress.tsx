@@ -1,18 +1,13 @@
 import { AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
-export type SubmissionStage = "idle" | "tests" | "deploy" | "analysis" | "done";
+export type SubmissionStage = "idle" | "deploy" | "analysis" | "done";
 
 const stageSteps = [
   {
-    id: "tests",
-    title: "Test generation",
-    detail: "Generating personalized unit tests",
-  },
-  {
     id: "deploy",
     title: "Build & deploy",
-    detail: "Building the container and running tests.",
+    detail: "Building the container and deploying your solution.",
   },
   {
     id: "analysis",

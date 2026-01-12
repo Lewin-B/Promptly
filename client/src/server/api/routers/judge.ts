@@ -77,7 +77,7 @@ export const judgeRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      let currentStage: SubmissionStage = "tests";
+      let currentStage: SubmissionStage = "deploy";
       updateSubmissionProgress(input.submissionId, currentStage, null);
 
       try {
@@ -98,59 +98,7 @@ export const judgeRouter = createTRPCRouter({
           .limit(1)
           .then((rows) => rows[0] ?? null);
 
-        console.log(`${env.AGENT_SERVER_URL}/test`);
-
-        const testAgentResponse = await fetch(`${env.AGENT_SERVER_URL}/test`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            jsonrpc: "2.0",
-            method: "message/send",
-            id: randomUUID(),
-            params: {
-              configuration: {
-                blocking: true,
-              },
-              message: {
-                messageId: randomUUID(),
-                role: "user",
-                parts: [
-                  {
-                    kind: "text",
-                    text: `Generate unit tests for problem ${problem?.name}. Use the provided files and problem description.`,
-                  },
-                  {
-                    kind: "data",
-                    data: {
-                      problemId: input.problemId,
-                      problemDescription: problem?.description ?? null,
-                      files: normalizedFiles,
-                    },
-                  },
-                ],
-              },
-            },
-          }),
-        });
-
-        if (!testAgentResponse.ok) {
-          throw new Error(
-            `Test agent invoke failed: ${testAgentResponse.status}`,
-          );
-        }
-
-        const bodyText = await testAgentResponse.text();
-        const testFiles = parseTestAgentArtifacts(bodyText);
-        if (testFiles) {
-          Object.assign(normalizedFiles, testFiles);
-        }
-
         console.log("normalized Files: ", normalizedFiles);
-
-        currentStage = "deploy";
-        updateSubmissionProgress(input.submissionId, currentStage, null);
 
         const tarArchive = await buildTarFromFiles(normalizedFiles);
         const tarArchiveBase64 = tarArchive.toString("base64url");
@@ -451,40 +399,6 @@ function ensurePackageJsonMetadata(files: Record<string, string>) {
     files["package.json"] = JSON.stringify(parsed, null, 2);
   } catch {
     // Keep invalid JSON unchanged.
-  }
-}
-
-function parseTestAgentArtifacts(
-  bodyText: string,
-): Record<string, string> | null {
-  try {
-    const response = JSON.parse(bodyText) as {
-      result?: {
-        artifacts?: Array<{
-          parts?: Array<{
-            kind?: string;
-            text?: string;
-          }>;
-        }>;
-      };
-    };
-
-    const parts = response.result?.artifacts?.flatMap(
-      (artifact) => artifact.parts ?? [],
-    );
-    const textPart = parts?.find((part) => part.kind === "text")?.text;
-    if (!textPart) return null;
-
-    const trimmed = textPart.trim();
-    const jsonPayload = trimmed
-      .replace(/^```json\s*/i, "")
-      .replace(/```$/i, "")
-      .trim();
-    const parsed = JSON.parse(jsonPayload) as Record<string, string>;
-    return parsed;
-  } catch (error) {
-    console.warn("Failed to parse test agent artifacts:", error);
-    return null;
   }
 }
 

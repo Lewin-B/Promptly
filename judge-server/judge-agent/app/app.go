@@ -169,46 +169,6 @@ func NewOrchestratorAgent(ctx context.Context, subAgents ...agent.Agent) agent.A
 	return a
 }
 
-func NewTestAgent(ctx context.Context) agent.Agent {
-	model, err := gemini.NewModel(ctx, "gemini-2.5-flash", &genai.ClientConfig{
-		APIKey: os.Getenv("GOOGLE_API_KEY"),
-	})
-	if err != nil {
-		panic(fmt.Errorf("failed to create model: %w", err))
-	}
-
-	transport := mcptransport.Local(ctx)
-
-	mcpToolSet, err := mcptoolset.New(mcptoolset.Config{
-		Transport: transport,
-	})
-	if err != nil {
-		panic(fmt.Errorf("failed to create MCP tool set: %w", err))
-	}
-
-	a, err := llmagent.New((llmagent.Config{
-		Name:        "test_generator",
-		Model:       model,
-		Description: "Generates unit tests for the provided react problems",
-		Instruction: `You are a test generator. You receive a JSON object representing the project files and a problem description.
-					  Your job is to:
-					  - Generate focused unit tests that verify the requirements in the problem description using jest.
-					  - Generate new files for the tests follow existing project conventions.
-					  - Avoid end-to-end or snapshot-heavy tests.
-					  - Output only the test files as raw JSON in the form {"path/to/test.ext":"file content"}.
-					  - Do not wrap the JSON in markdown, code fences, or extra commentary.`,
-		Toolsets: []tool.Toolset{
-			mcpToolSet,
-		},
-	}))
-
-	if err != nil {
-		panic(fmt.Errorf("Failed to create agent: ", err))
-	}
-
-	return a
-}
-
 func NewAnalyzerAgent(ctx context.Context) agent.Agent {
 	model, err := gemini.NewModel(ctx, "gemini-2.5-flash", &genai.ClientConfig{
 		APIKey: os.Getenv("GOOGLE_API_KEY"),
