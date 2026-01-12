@@ -38,18 +38,21 @@ function mapSubmissionFiles(
   submittedCode: Record<string, string> | null | undefined,
 ): SandpackFiles {
   if (!submittedCode) return {};
-  const entries = Object.entries(submittedCode).map(([path, code]) => {
-    let normalizedPath = path;
-    if (normalizedPath.startsWith("src/")) {
-      normalizedPath = `/${normalizedPath.slice(4)}`;
-    } else if (normalizedPath.startsWith("public/")) {
-      normalizedPath = `/${normalizedPath}`;
-    } else if (!normalizedPath.startsWith("/")) {
-      normalizedPath = `/${normalizedPath}`;
-    }
-    return [normalizedPath, code];
-  });
-  return Object.fromEntries(entries);
+  return Object.entries(submittedCode).reduce<SandpackFiles>(
+    (files, [path, code]) => {
+      let normalizedPath = path;
+      if (normalizedPath.startsWith("src/")) {
+        normalizedPath = `/${normalizedPath.slice(4)}`;
+      } else if (normalizedPath.startsWith("public/")) {
+        normalizedPath = `/${normalizedPath}`;
+      } else if (!normalizedPath.startsWith("/")) {
+        normalizedPath = `/${normalizedPath}`;
+      }
+      files[normalizedPath] = code;
+      return files;
+    },
+    {},
+  );
 }
 
 function getChatHistory(chatHistory: unknown): SubmissionChatMessage[] {
