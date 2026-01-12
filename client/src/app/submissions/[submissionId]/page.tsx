@@ -11,16 +11,19 @@ import {
 import {
   SandboxCodeEditor,
   SandboxLayout,
+  SandboxPreview,
   SandboxTabs,
   SandboxTabsContent,
   SandboxTabsList,
   SandboxTabsTrigger,
+  SandboxTests,
   SandboxProvider,
 } from "~/components/ui/sandbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { api } from "~/trpc/react";
 import ProblemDescription from "~/app/problems/react/[problemId]/_components/problem-description";
 import type { ProblemDescriptionProps } from "~/app/problems/react/[problemId]/_components/problem-description";
+import { Files, TestTube, Wallpaper } from "lucide-react";
 
 type SubmissionChatMessage = {
   role: "user" | "assistant";
@@ -49,9 +52,7 @@ function mapSubmissionFiles(
   return Object.fromEntries(entries);
 }
 
-function getChatHistory(
-  chatHistory: unknown,
-): SubmissionChatMessage[] {
+function getChatHistory(chatHistory: unknown): SubmissionChatMessage[] {
   if (!Array.isArray(chatHistory)) return [];
   return chatHistory.filter(
     (entry): entry is SubmissionChatMessage =>
@@ -96,8 +97,7 @@ function SubmissionInfo({
 
   const statusTone =
     status === "success" ? "text-emerald-600" : "text-rose-600";
-  const statusBg =
-    status === "success" ? "bg-emerald-50" : "bg-rose-50";
+  const statusBg = status === "success" ? "bg-emerald-50" : "bg-rose-50";
 
   return (
     <div className="bg-card flex-1 space-y-4 overflow-y-auto rounded-lg border p-4 text-sm">
@@ -110,7 +110,9 @@ function SubmissionInfo({
         </span>
       </div>
       <div className="space-y-1">
-        <p className="text-muted-foreground text-xs uppercase">Execution time</p>
+        <p className="text-muted-foreground text-xs uppercase">
+          Execution time
+        </p>
         <p className="text-sm font-semibold text-slate-900">
           {executionTime ?? "Not recorded"}
         </p>
@@ -177,9 +179,24 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
     () => mapSubmissionFiles(data?.submittedCode ?? null),
     [data?.submittedCode],
   );
-  const visibleFiles = Object.keys(sandpackFiles);
+  const allFiles = Object.keys(sandpackFiles);
+  const baseVisibleFiles = useMemo(() => {
+    if (problem?.visibleFiles?.length) {
+      return problem.visibleFiles.map((file) =>
+        file.startsWith("/") ? file : `/${file}`,
+      );
+    }
+    return allFiles;
+  }, [allFiles, problem?.visibleFiles]);
+  const visibleFiles = useMemo(() => {
+    const testFiles = allFiles.filter((file) => file.includes(".test"));
+    const merged = new Set([...baseVisibleFiles, ...testFiles]);
+    return [...merged].filter((file) => allFiles.includes(file));
+  }, [allFiles, baseVisibleFiles]);
   const activeFile =
-    visibleFiles.find((file) => file.endsWith(".js")) ?? visibleFiles[0];
+    visibleFiles.find((file) => file.endsWith(".js")) ??
+    visibleFiles[0] ??
+    allFiles[0];
   const chatHistory = getChatHistory(data?.chatHistory);
 
   if (!isSubmissionIdValid) {
@@ -203,7 +220,10 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
         >
           <div className="bg-muted/40 h-full w-full overflow-hidden border-r p-3 md:p-4">
             <div className="flex h-full w-full flex-col gap-3 overflow-scroll">
-              <Tabs defaultValue="problem" className="flex h-full flex-col gap-3">
+              <Tabs
+                defaultValue="problem"
+                className="flex h-full flex-col gap-3"
+              >
                 <div className="text-sm font-semibold">Submission Overview</div>
                 <TabsList className="w-full">
                   <TabsTrigger className="flex-1" value="problem">
@@ -219,7 +239,10 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
                 >
                   <ProblemDescription {...problemDescriptionProps} />
                 </TabsContent>
-                <TabsContent value="info" className="flex h-full flex-1 flex-col">
+                <TabsContent
+                  value="info"
+                  className="flex h-full flex-1 flex-col"
+                >
                   <SubmissionInfo
                     status={data?.status ?? null}
                     executionTime={null}
@@ -277,7 +300,8 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
                       visibleFiles,
                       activeFile,
                       autoReload: false,
-                      autorun: false,
+                      autorun: true,
+                      externalResources: ["https://cdn.tailwindcss.com"],
                     }}
                   >
                     <SandboxLayout>
@@ -286,12 +310,26 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
                         defaultValue="code"
                       >
                         <SandboxTabsList className="border-b border-slate-200/60 bg-white/70 px-3 py-2">
-                          <SandboxTabsTrigger
-                            value="code"
-                            className="gap-2 text-xs font-semibold tracking-[0.18em] uppercase"
-                          >
-                            Files
-                          </SandboxTabsTrigger>
+                          <div className="flex flex-1 items-center gap-2">
+                            <SandboxTabsTrigger
+                              value="code"
+                              className="gap-2 text-xs font-semibold tracking-[0.18em] uppercase"
+                            >
+                              <Files className="h-4 w-4" /> Files
+                            </SandboxTabsTrigger>
+                            <SandboxTabsTrigger
+                              value="preview"
+                              className="gap-2 text-xs font-semibold tracking-[0.18em] uppercase"
+                            >
+                              <Wallpaper className="h-4 w-4" /> Preview
+                            </SandboxTabsTrigger>
+                            <SandboxTabsTrigger
+                              value="tests"
+                              className="gap-2 text-xs font-semibold tracking-[0.18em] uppercase"
+                            >
+                              <TestTube className="h-4 w-4" /> Tests
+                            </SandboxTabsTrigger>
+                          </div>
                         </SandboxTabsList>
                         <SandboxTabsContent value="code" className="bg-white">
                           <SandboxCodeEditor
@@ -301,6 +339,19 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
                             wrapContent
                             readOnly
                           />
+                        </SandboxTabsContent>
+                        <SandboxTabsContent
+                          value="preview"
+                          className="bg-white"
+                        >
+                          <SandboxPreview
+                            showNavigator
+                            showRefreshButton
+                            style={{ height: "78vh" }}
+                          />
+                        </SandboxTabsContent>
+                        <SandboxTabsContent value="tests" className="bg-white">
+                          <SandboxTests className="min-h-160" />
                         </SandboxTabsContent>
                       </SandboxTabs>
                     </SandboxLayout>
