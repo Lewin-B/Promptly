@@ -4,7 +4,7 @@ import { Button } from "~/components/ui/button";
 
 export default function Hero() {
   return (
-    <section className="text-foreground relative flex min-h-screen w-full items-center justify-center px-6 py-16 sm:py-20">
+    <section className="text-foreground relative flex min-h-screen w-full items-center justify-center px-6 sm:py-20">
       <div className="to-primary/10 pointer-events-none absolute inset-0 -z-10 bg-linear-to-bl from-slate-50 via-white" />
       <div className="mx-auto flex max-w-3xl flex-col items-center gap-6 text-center">
         <h1 className="text-5xl font-black tracking-tight text-balance text-slate-900 sm:text-6xl lg:text-7xl">
@@ -18,7 +18,7 @@ export default function Hero() {
             <Link href="/problems">Start free</Link>
           </Button>
           <Button asChild variant="outline">
-            <a href="#demo">See the flow</a>
+            <a href="#about">See the flow</a>
           </Button>
         </div>
         <p className="text-foreground/50 text-xs font-medium">

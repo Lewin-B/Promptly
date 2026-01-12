@@ -30,7 +30,7 @@ export default function About() {
   return (
     <section
       id="about"
-      className="text-foreground relative w-full scroll-mt-24 px-6 py-16 sm:py-20"
+      className="text-foreground relative min-h-screen w-full scroll-mt-24 px-6 py-16 sm:py-20"
     >
       <div className="to-primary/10 from-primary/20 pointer-events-none absolute inset-0 -z-10 bg-linear-to-br via-white" />
       <div className="pointer-events-none absolute top-16 -left-10 h-32 w-32 rounded-full bg-amber-200/40 blur-2xl motion-safe:animate-pulse" />
@@ -42,8 +42,9 @@ export default function About() {
             A new way to learn
           </h1>
           <p className="mx-auto max-w-2xl text-base text-pretty text-slate-600 sm:text-lg">
-            Promptly turns practice into a cartoony adventure. Pick a language,
-            jump into a micro-challenge, and watch your skills level up fast.
+            Promptly provides an isolated environment for you to practice coding
+            with an ai assistant. Pick a problem, choose a model, and dive right
+            in!
           </p>
         </div>
 

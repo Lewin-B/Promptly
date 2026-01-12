@@ -43,7 +43,7 @@ export default function ProblemsByCategoryPage() {
               {"React"}
             </h1>
             <p className="mt-2 text-sm text-slate-500">
-              Practice prompts curated for focused practice sessions.
+              Vibe coding React tailored challenges.
             </p>
           </div>
           <Button asChild variant="outline">
