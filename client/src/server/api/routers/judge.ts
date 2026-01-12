@@ -166,6 +166,7 @@ export const judgeRouter = createTRPCRouter({
             deployResponse = (await response.json()) as DeployResponse;
           } catch (error) {
             console.warn("Failed to parse deploy response:", error);
+            console.log("Deploy Response: ", deployResponse);
           }
         } catch (error) {
           console.warn("Deploy request failed:", error);

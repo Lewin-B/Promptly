@@ -1,153 +1,316 @@
-import { notFound } from "next/navigation";
-import { api } from "~/trpc/server";
+"use client";
 
-function getScoreTone(score: number) {
-  if (score >= 90) return "text-emerald-600";
-  if (score >= 75) return "text-amber-600";
-  return "text-rose-600";
+import { use, useMemo } from "react";
+import type { SandpackFiles } from "@codesandbox/sandpack-react";
+
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "~/components/ui/resizable";
+import {
+  SandboxCodeEditor,
+  SandboxLayout,
+  SandboxTabs,
+  SandboxTabsContent,
+  SandboxTabsList,
+  SandboxTabsTrigger,
+  SandboxProvider,
+} from "~/components/ui/sandbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { api } from "~/trpc/react";
+import ProblemDescription from "~/app/problems/react/[problemId]/_components/problem-description";
+import type { ProblemDescriptionProps } from "~/app/problems/react/[problemId]/_components/problem-description";
+
+type SubmissionChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+type SubmissionPageProps = {
+  params: Promise<{ submissionId: string }>;
+};
+
+function mapSubmissionFiles(
+  submittedCode: Record<string, string> | null | undefined,
+): SandpackFiles {
+  if (!submittedCode) return {};
+  const entries = Object.entries(submittedCode).map(([path, code]) => {
+    let normalizedPath = path;
+    if (normalizedPath.startsWith("src/")) {
+      normalizedPath = `/${normalizedPath.slice(4)}`;
+    } else if (normalizedPath.startsWith("public/")) {
+      normalizedPath = `/${normalizedPath}`;
+    } else if (!normalizedPath.startsWith("/")) {
+      normalizedPath = `/${normalizedPath}`;
+    }
+    return [normalizedPath, code];
+  });
+  return Object.fromEntries(entries);
 }
 
-export default async function SubmissionPage({
-  params,
+function getChatHistory(
+  chatHistory: unknown,
+): SubmissionChatMessage[] {
+  if (!Array.isArray(chatHistory)) return [];
+  return chatHistory.filter(
+    (entry): entry is SubmissionChatMessage =>
+      Boolean(entry) &&
+      typeof entry === "object" &&
+      "role" in entry &&
+      "content" in entry,
+  );
+}
+
+function SubmissionInfo({
+  status,
+  executionTime,
+  timestamp,
+  chatHistory,
+  isLoading,
 }: {
-  params: Promise<{ submissionId: string }>;
+  status?: string | null;
+  executionTime?: string | null;
+  timestamp?: string | null;
+  chatHistory: SubmissionChatMessage[];
+  isLoading: boolean;
 }) {
-  const { submissionId: submissionIdParam } = await params;
-  const submissionId = Number(submissionIdParam);
-  if (!Number.isFinite(submissionId)) {
-    notFound();
+  if (isLoading) {
+    return (
+      <div className="bg-card flex-1 space-y-4 overflow-y-auto rounded-lg border p-4">
+        <div className="space-y-2">
+          <div className="h-4 w-24 rounded bg-slate-200" />
+          <div className="h-6 w-32 rounded bg-slate-100" />
+        </div>
+        <div className="space-y-2">
+          <div className="h-4 w-20 rounded bg-slate-200" />
+          <div className="h-6 w-28 rounded bg-slate-100" />
+        </div>
+        <div className="space-y-2">
+          <div className="h-4 w-24 rounded bg-slate-200" />
+          <div className="h-6 w-40 rounded bg-slate-100" />
+        </div>
+      </div>
+    );
   }
 
-  const submission = await api.judge.submission({ submissionId });
-  if (!submission) {
-    notFound();
-  }
-
-  const analysis = submission.analysis;
-  const scores = analysis
-    ? [
-        analysis.codeQuality.score,
-        analysis.functionality.score,
-        analysis.productionAbility.score,
-        analysis.chatHistory.score,
-      ]
-    : [];
-  const averageScore =
-    scores.length > 0
-      ? Math.round(
-          scores.reduce((sum, value) => sum + value, 0) / scores.length,
-        )
-      : null;
   const statusTone =
-    submission.status === "success" ? "text-emerald-600" : "text-rose-600";
+    status === "success" ? "text-emerald-600" : "text-rose-600";
   const statusBg =
-    submission.status === "success" ? "bg-emerald-50" : "bg-rose-50";
+    status === "success" ? "bg-emerald-50" : "bg-rose-50";
 
   return (
-    <div className="flex min-h-screen w-full justify-center bg-[radial-gradient(120%_120%_at_50%_0%,rgba(59,130,246,0.08),rgba(15,23,42,0)_60%)] px-6 py-12">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-        <section className="bg-card ring-border/60 rounded-2xl border p-6 shadow-[0_20px_60px_-30px_rgba(15,23,42,0.2)] ring-1 backdrop-blur">
-          <p className="text-xs font-semibold tracking-[0.4em] text-slate-500 uppercase">
-            Submission {submission.id}
+    <div className="bg-card flex-1 space-y-4 overflow-y-auto rounded-lg border p-4 text-sm">
+      <div className="space-y-1">
+        <p className="text-muted-foreground text-xs uppercase">Status</p>
+        <span
+          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusTone} ${statusBg}`}
+        >
+          {status ?? "Unknown"}
+        </span>
+      </div>
+      <div className="space-y-1">
+        <p className="text-muted-foreground text-xs uppercase">Execution time</p>
+        <p className="text-sm font-semibold text-slate-900">
+          {executionTime ?? "Not recorded"}
+        </p>
+      </div>
+      <div className="space-y-1">
+        <p className="text-muted-foreground text-xs uppercase">Timestamp</p>
+        <p className="text-sm font-semibold text-slate-900">
+          {timestamp ?? "Not recorded"}
+        </p>
+      </div>
+      <div className="space-y-2 pt-2">
+        <p className="text-muted-foreground text-xs uppercase">Chat history</p>
+        {chatHistory.length === 0 ? (
+          <p className="text-muted-foreground text-sm">
+            No chat history recorded for this submission.
           </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900 md:text-4xl">
-            Submission results
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm text-slate-600">
-            Full analyzer report with scores, rationale, and the overall verdict
-            for your latest solution.
-          </p>
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            <div className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
-              <p className="text-xs text-slate-500 uppercase">Problem ID</p>
-              <p className="mt-2 text-lg font-semibold text-slate-900">
-                {submission.problemId ?? "Unknown"}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
-              <p className="text-xs text-slate-500 uppercase">Status</p>
-              <p
-                className={`mt-2 inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold ${statusTone} ${statusBg}`}
-              >
-                {submission.status}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
-              <p className="text-xs text-slate-500 uppercase">Average score</p>
-              <p className="mt-2 text-lg font-semibold text-slate-900">
-                {averageScore ?? "N/A"}
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {!analysis ? (
-          <section className="rounded-2xl border border-amber-200/70 bg-amber-50/70 p-6">
-            <h2 className="text-lg font-semibold text-amber-900">
-              Analysis unavailable
-            </h2>
-            <p className="mt-2 text-sm text-amber-800">
-              We could not parse the analyzer output for this submission. Check
-              back later or resubmit.
-            </p>
-          </section>
         ) : (
-          <>
-            <section className="grid gap-4 md:grid-cols-2">
-              {[
-                {
-                  title: "Code quality",
-                  score: analysis.codeQuality.score,
-                  rationale: analysis.codeQuality.rationale,
-                },
-                {
-                  title: "Functionality",
-                  score: analysis.functionality.score,
-                  rationale: analysis.functionality.rationale,
-                },
-                {
-                  title: "Production ability",
-                  score: analysis.productionAbility.score,
-                  rationale: analysis.productionAbility.rationale,
-                },
-                {
-                  title: "Chat history",
-                  score: analysis.chatHistory.score,
-                  rationale: analysis.chatHistory.rationale,
-                },
-              ].map((item) => (
-                <div
-                  key={item.title}
-                  className="bg-card ring-border/60 rounded-2xl border p-5 shadow-[0_16px_40px_-28px_rgba(15,23,42,0.16)] ring-1"
-                >
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-slate-900">
-                      {item.title}
-                    </h2>
-                    <span
-                      className={`text-lg font-semibold ${getScoreTone(item.score)}`}
-                    >
-                      {item.score}
-                    </span>
-                  </div>
-                  <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                    {item.rationale}
-                  </p>
+          <div className="bg-background space-y-3 rounded-lg border p-3 shadow-inner">
+            {chatHistory.map((message, index) => (
+              <div
+                key={`${message.role}-${index}`}
+                className="bg-muted/60 space-y-1 rounded-md border border-dashed p-2"
+              >
+                <div className="text-muted-foreground flex items-center gap-2 text-xs tracking-wide uppercase">
+                  <span className="bg-primary h-1.5 w-1.5 rounded-full" />
+                  {message.role === "assistant" ? "Assistant" : "You"}
                 </div>
-              ))}
-            </section>
-
-            <section className="bg-card ring-border/60 rounded-2xl border p-6 shadow-[0_16px_40px_-28px_rgba(15,23,42,0.16)] ring-1">
-              <h2 className="text-lg font-semibold text-slate-900">
-                Overall verdict
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                {analysis.overallVerdict}
-              </p>
-            </section>
-          </>
+                <p className="leading-relaxed whitespace-pre-wrap">
+                  {message.content}
+                </p>
+              </div>
+            ))}
+          </div>
         )}
       </div>
+    </div>
+  );
+}
+
+export default function SubmissionPage({ params }: SubmissionPageProps) {
+  const { submissionId: submissionIdParam } = use(params);
+  const submissionId = useMemo(
+    () => Number(submissionIdParam),
+    [submissionIdParam],
+  );
+  const isSubmissionIdValid = Number.isFinite(submissionId);
+
+  const { data, isLoading, error } = api.judge.submission.useQuery(
+    { submissionId },
+    { enabled: isSubmissionIdValid },
+  );
+
+  const problem = data?.problem ?? null;
+  const problemDescriptionProps: ProblemDescriptionProps = {
+    category: problem?.category?.toLowerCase() ?? "react",
+    categoryValue: problem?.category ?? null,
+    isProblemIdValid: Boolean(problem?.id),
+    isLoading,
+    error: error ? { message: error.message } : null,
+    data: (problem as ProblemDescriptionProps["data"]) ?? null,
+  };
+
+  const sandpackFiles = useMemo(
+    () => mapSubmissionFiles(data?.submittedCode ?? null),
+    [data?.submittedCode],
+  );
+  const visibleFiles = Object.keys(sandpackFiles);
+  const activeFile =
+    visibleFiles.find((file) => file.endsWith(".js")) ?? visibleFiles[0];
+  const chatHistory = getChatHistory(data?.chatHistory);
+
+  if (!isSubmissionIdValid) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-6 text-sm text-rose-700">
+          Invalid submission id.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-screen w-screen justify-center overflow-hidden">
+      <ResizablePanelGroup direction="horizontal" className="h-screen w-full">
+        <ResizablePanel
+          defaultSize={26}
+          minSize={18}
+          maxSize={80}
+          className="min-w-[16rem]"
+        >
+          <div className="bg-muted/40 h-full w-full overflow-hidden border-r p-3 md:p-4">
+            <div className="flex h-full w-full flex-col gap-3 overflow-scroll">
+              <Tabs defaultValue="problem" className="flex h-full flex-col gap-3">
+                <div className="text-sm font-semibold">Submission Overview</div>
+                <TabsList className="w-full">
+                  <TabsTrigger className="flex-1" value="problem">
+                    Problem Description
+                  </TabsTrigger>
+                  <TabsTrigger className="flex-1" value="info">
+                    Submission Info
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent
+                  value="problem"
+                  className="bg-card flex-1 overflow-y-auto rounded-lg border p-3 text-sm"
+                >
+                  <ProblemDescription {...problemDescriptionProps} />
+                </TabsContent>
+                <TabsContent value="info" className="flex h-full flex-1 flex-col">
+                  <SubmissionInfo
+                    status={data?.status ?? null}
+                    executionTime={null}
+                    timestamp={null}
+                    chatHistory={chatHistory}
+                    isLoading={isLoading}
+                  />
+                </TabsContent>
+              </Tabs>
+            </div>
+          </div>
+        </ResizablePanel>
+        <ResizableHandle withHandle />
+        <ResizablePanel defaultSize={74} minSize={60}>
+          <main className="relative flex h-full w-full flex-col overflow-hidden bg-[radial-gradient(120%_120%_at_50%_0%,rgba(59,130,246,0.08),rgba(15,23,42,0)_60%)] p-3 md:p-4">
+            <div className="bg-card ring-border/60 relative flex h-full flex-col rounded-2xl border p-3 shadow-[0_20px_60px_-30px_rgba(15,23,42,0.35)] ring-1 backdrop-blur md:p-4">
+              <header className="space-y-2 pb-4 md:pb-6">
+                <p className="text-primary text-sm font-semibold tracking-[0.2em] uppercase">
+                  Submission
+                </p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="text-3xl font-semibold tracking-tight">
+                    Review code
+                  </h1>
+                  {data?.status && (
+                    <span className="bg-primary/10 text-primary rounded-full px-3 py-1 text-xs font-semibold tracking-[0.18em] uppercase">
+                      {data.status}
+                    </span>
+                  )}
+                </div>
+                <p className="text-muted-foreground max-w-2xl">
+                  This editor is read-only and mirrors the exact files submitted
+                  for evaluation.
+                </p>
+              </header>
+
+              <div className="flex-1 overflow-hidden rounded-xl border border-slate-200/70 bg-white/90 shadow-inner">
+                {isLoading ? (
+                  <div className="flex h-full items-center justify-center text-sm text-slate-500">
+                    Loading submission...
+                  </div>
+                ) : error ? (
+                  <div className="flex h-full items-center justify-center text-sm text-rose-600">
+                    Unable to load submission.
+                  </div>
+                ) : visibleFiles.length === 0 ? (
+                  <div className="flex h-full items-center justify-center text-sm text-slate-500">
+                    No code files available for this submission.
+                  </div>
+                ) : (
+                  <SandboxProvider
+                    template="react"
+                    files={sandpackFiles}
+                    options={{
+                      visibleFiles,
+                      activeFile,
+                      autoReload: false,
+                      autorun: false,
+                    }}
+                  >
+                    <SandboxLayout>
+                      <SandboxTabs
+                        className="h-full border-slate-200/70 bg-slate-50/60"
+                        defaultValue="code"
+                      >
+                        <SandboxTabsList className="border-b border-slate-200/60 bg-white/70 px-3 py-2">
+                          <SandboxTabsTrigger
+                            value="code"
+                            className="gap-2 text-xs font-semibold tracking-[0.18em] uppercase"
+                          >
+                            Files
+                          </SandboxTabsTrigger>
+                        </SandboxTabsList>
+                        <SandboxTabsContent value="code" className="bg-white">
+                          <SandboxCodeEditor
+                            className="min-h-160"
+                            showTabs
+                            showLineNumbers
+                            wrapContent
+                            readOnly
+                          />
+                        </SandboxTabsContent>
+                      </SandboxTabs>
+                    </SandboxLayout>
+                  </SandboxProvider>
+                )}
+              </div>
+            </div>
+          </main>
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   );
 }

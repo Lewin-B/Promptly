@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { FaGithub } from "react-icons/fa";
+import Image from "next/image";
 
 import { Button } from "~/components/ui/button";
 import { authClient } from "~/server/better-auth/client";
@@ -65,7 +66,7 @@ export default function Navbar() {
           >
             Promptly
           </Link>
-          <nav className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 sm:gap-4 sm:text-sm">
+          <nav className="flex items-center gap-2 text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase sm:gap-4 sm:text-sm">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
@@ -82,9 +83,11 @@ export default function Navbar() {
             <div className="flex items-center gap-3 rounded-full border border-slate-200/70 bg-white/90 px-2 py-1 shadow-sm">
               <div className="flex items-center gap-2">
                 {user.image ? (
-                  <img
+                  <Image
                     src={user.image}
                     alt={user.name ? `${user.name} profile` : "User profile"}
+                    width={0}
+                    height={0}
                     className="h-9 w-9 rounded-full border border-slate-200/70 object-cover"
                   />
                 ) : (

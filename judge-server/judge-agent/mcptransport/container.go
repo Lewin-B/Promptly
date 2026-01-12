@@ -67,17 +67,20 @@ func DeployContainer(ctx context.Context, req *mcp.CallToolRequest, input Input)
 				break
 			}
 			if err != nil {
-				panic(err)
+				log.Printf("DeployContainer: failed to read build context: %v", err)
+				return nil, Output{BuildFailed: true}, fmt.Errorf("read build context: %w", err)
 			}
 			if header.Name == "Dockerfile" {
 				continue
 			}
 			if err := tarWriter.WriteHeader(header); err != nil {
-				panic(err)
+				log.Printf("DeployContainer: failed to write tar header %s: %v", header.Name, err)
+				return nil, Output{BuildFailed: true}, fmt.Errorf("write tar header: %w", err)
 			}
 			if header.Typeflag == tar.TypeReg || header.Typeflag == tar.TypeRegA {
 				if _, err := io.Copy(tarWriter, tarReader); err != nil {
-					panic(err)
+					log.Printf("DeployContainer: failed to copy build context file %s: %v", header.Name, err)
+					return nil, Output{BuildFailed: true}, fmt.Errorf("copy build context file: %w", err)
 				}
 			}
 		}
@@ -88,13 +91,16 @@ func DeployContainer(ctx context.Context, req *mcp.CallToolRequest, input Input)
 		Mode: 0o644,
 		Size: int64(len(dockerfileContents)),
 	}); err != nil {
-		panic(err)
+		log.Printf("DeployContainer: failed to write Dockerfile header: %v", err)
+		return nil, Output{BuildFailed: true}, fmt.Errorf("write Dockerfile header: %w", err)
 	}
 	if _, err := tarWriter.Write(dockerfileContents); err != nil {
-		panic(err)
+		log.Printf("DeployContainer: failed to write Dockerfile contents: %v", err)
+		return nil, Output{BuildFailed: true}, fmt.Errorf("write Dockerfile contents: %w", err)
 	}
 	if err := tarWriter.Close(); err != nil {
-		panic(err)
+		log.Printf("DeployContainer: failed to close tar writer: %v", err)
+		return nil, Output{BuildFailed: true}, fmt.Errorf("close tar writer: %w", err)
 	}
 
 	imageName := "mcp-image-" + uuid.NewString()
@@ -111,7 +117,13 @@ func DeployContainer(ctx context.Context, req *mcp.CallToolRequest, input Input)
 	podName := "mcp-pod-" + uuid.NewString()
 	podUID, err := createKubernetesPod(ctx, podName, imageRef, input.DockerFile)
 	if err != nil {
-		panic(err)
+		log.Printf("DeployContainer: failed to create pod: %v", err)
+		return nil, Output{
+			Stdout:      buildStdout,
+			Stderr:      buildStderr,
+			BuildLogs:   buildStdout,
+			BuildFailed: true,
+		}, err
 	}
 
 	return nil, Output{
@@ -246,6 +258,14 @@ func buildImageWithBuildkit(ctx context.Context, imageName string, buildContext 
 			}
 		}
 	}()
+	closeStatusCh := func() {
+		defer func() {
+			if recover() != nil {
+				// BuildKit may close the channel internally on error.
+			}
+		}()
+		close(statusCh)
+	}
 
 	solveOpt := client.SolveOpt{
 		Frontend: "dockerfile.v0",
@@ -271,11 +291,11 @@ func buildImageWithBuildkit(ctx context.Context, imageName string, buildContext 
 		solveOpt.Exports[0].Attrs["registry.plainhttp"] = "true"
 	}
 	if _, err := bkClient.Solve(ctx, nil, solveOpt, statusCh); err != nil {
-		close(statusCh)
+		closeStatusCh()
 		<-done
 		return "", buildLogs.String(), "", fmt.Errorf("buildkit build failed: %w", err)
 	}
-	close(statusCh)
+	closeStatusCh()
 	<-done
 
 	return imageRef, buildLogs.String(), "", nil
