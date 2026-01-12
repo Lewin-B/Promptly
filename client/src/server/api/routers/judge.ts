@@ -6,7 +6,7 @@ import { fetch } from "undici";
 import { env } from "~/env";
 import { randomUUID } from "crypto";
 import { db } from "~/server/db";
-import { Problem, Submission } from "~/server/db/schema";
+import { Problem, Submission, account } from "~/server/db/schema";
 import { desc, eq } from "drizzle-orm";
 import {
   clearSubmissionProgress,
@@ -76,13 +76,21 @@ export const judgeRouter = createTRPCRouter({
         chatHistory: z.array(chatMessageSchema),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       let currentStage: SubmissionStage = "tests";
       updateSubmissionProgress(input.submissionId, currentStage, null);
 
       try {
         const normalizedFiles = normalizeSandpackFiles(input.files);
         ensurePackageJsonMetadata(normalizedFiles);
+        const [userAccount] = await db
+          .select({ id: account.id })
+          .from(account)
+          .where(eq(account.userId, ctx.session.user.id))
+          .limit(1);
+        if (!userAccount?.id) {
+          throw new Error("Account not found for current user.");
+        }
         const problem = await db
           .select()
           .from(Problem)
@@ -232,7 +240,7 @@ export const judgeRouter = createTRPCRouter({
           .insert(Submission)
           .values({
             problemId: input.problemId,
-            accountId: null,
+            accountId: userAccount.id,
             submittedCode: normalizedFiles,
             status: buildFailed || !analyzerResult ? "failure" : "success",
             chatHistory: input.chatHistory,

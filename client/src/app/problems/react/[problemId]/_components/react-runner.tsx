@@ -65,7 +65,8 @@ export default function CodeRunner({
 
   useEffect(() => {
     const now = Date.now();
-    const endTime = now + 15 * 60 * 1000;
+    const endTime =
+      now + Number(problemDescription.data?.description.timeLimit) * 60 * 1000;
     sessionEndRef.current = endTime;
     setTimeLeft(Math.max(0, Math.ceil((endTime - now) / 1000)));
 
@@ -103,7 +104,7 @@ export default function CodeRunner({
       window.clearTimeout(timeoutId);
       window.clearInterval(intervalId);
     };
-  }, [problemId]);
+  }, [problemId, problemDescription.data?.description.timeLimit]);
 
   // useEffect(() => {
   //   if (!didMountRef.current) {
@@ -227,7 +228,7 @@ export default function CodeRunner({
               {showCaution && (
                 <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/50 px-4">
                   <div className="bg-card w-full max-w-lg rounded-2xl border border-slate-200/70 p-6 shadow-xl">
-                    <p className="text-amber-600 text-xs font-semibold tracking-[0.2em] uppercase">
+                    <p className="text-xs font-semibold tracking-[0.2em] text-amber-600 uppercase">
                       Caution
                     </p>
                     <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
@@ -329,7 +330,9 @@ export default function CodeRunner({
                           variant="outline"
                           asChild
                         >
-                          <Link href={`/problems/react/${problemId}/submissions`}>
+                          <Link
+                            href={`/problems/react/${problemId}/submissions`}
+                          >
                             Submissions
                           </Link>
                         </Button>
