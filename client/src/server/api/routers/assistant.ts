@@ -99,7 +99,7 @@ export const assistantRouter = createTRPCRouter({
 
       if (!parsed) {
         return {
-          reply: text?.trim() || "I could not generate a response.",
+          reply: "Response was malformed or too large try again",
           files: [],
           tokens_used: tokens,
         };
