@@ -69,7 +69,6 @@ function getChatHistory(chatHistory: unknown): SubmissionChatMessage[] {
 function SubmissionInfo({
   status,
   buildTime,
-  timestamp,
   chatHistory,
   buildScore,
   buildScoreRationale,
@@ -79,7 +78,6 @@ function SubmissionInfo({
 }: {
   status?: string | null;
   buildTime?: string | null;
-  timestamp?: string | null;
   chatHistory: SubmissionChatMessage[];
   buildScore?: number | null;
   buildScoreRationale?: string | null;
@@ -143,12 +141,6 @@ function SubmissionInfo({
           {buildTime ?? "Not recorded"}
         </p>
       </div>
-      <div className="space-y-1">
-        <p className="text-muted-foreground text-xs uppercase">Timestamp</p>
-        <p className="text-sm font-semibold text-slate-900">
-          {timestamp ?? "Not recorded"}
-        </p>
-      </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {scoreCards.map((card) => (
           <ScoreRing
@@ -160,7 +152,9 @@ function SubmissionInfo({
         ))}
       </div>
       <div className="space-y-2 pt-2">
-        <p className="text-muted-foreground text-xs uppercase">Analysis notes</p>
+        <p className="text-muted-foreground text-xs uppercase">
+          Analysis notes
+        </p>
         <div className="space-y-2 text-xs text-slate-600">
           <p>
             <span className="font-semibold text-slate-700">Build score:</span>{" "}
@@ -377,7 +371,6 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
                   <SubmissionInfo
                     status={data?.status ?? null}
                     buildTime={data?.analysis?.buildTime ?? null}
-                    timestamp={null}
                     chatHistory={chatHistory}
                     buildScore={data?.analysis?.buildScore?.score ?? null}
                     buildScoreRationale={
