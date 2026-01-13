@@ -75,6 +75,8 @@ export const judgeRouter = createTRPCRouter({
     )
     .mutation(async ({ input, ctx }) => {
       let currentStage: SubmissionStage = "deploy";
+      let deployResponse: DeployResponse | null = null;
+      let deployFetchOk = false;
       updateSubmissionProgress(input.submissionId, currentStage, null);
 
       try {
@@ -101,8 +103,6 @@ export const judgeRouter = createTRPCRouter({
         const tarArchiveBase64 = tarArchive.toString("base64url");
 
         // Build docker image
-        let deployResponse: DeployResponse | null = null;
-        let deployFetchOk = false;
         try {
           const response = await fetch(`${env.AGENT_SERVER_URL}/deploy`, {
             method: "POST",
@@ -229,6 +229,27 @@ export const judgeRouter = createTRPCRouter({
           5 * 60 * 1000,
         );
         throw error;
+      } finally {
+        const containerId =
+          deployResponse?.container_id ?? deployResponse?.container_name;
+        if (containerId) {
+          try {
+            const response = await fetch(`${env.AGENT_SERVER_URL}/shutdown`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ container_id: containerId }),
+            });
+            if (!response.ok) {
+              console.warn(
+                `Shutdown request failed: ${response.status} ${response.statusText}`,
+              );
+            }
+          } catch (error) {
+            console.warn("Shutdown request failed:", error);
+          }
+        }
       }
     }),
   progress: publicProcedure
