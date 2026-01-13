@@ -93,7 +93,15 @@ Open `http://localhost:3000`.
 
 ## Demo video and screenshots
 
-- Demo video: [Adding link here](https://example.com/demo)
+- Demo video: [Video](https://youtu.be/_t6UhA7W7aU)
 - Screenshots:
+  
 
 ## slides
+<img width="1470" height="800" alt="Screenshot 2026-01-12 at 11 15 39 PM" src="https://github.com/user-attachments/assets/cc9ce865-ff0a-4c13-8cfa-26558bfd2815" />
+<img width="1470" height="798" alt="Screenshot 2026-01-12 at 11 17 11 PM" src="https://github.com/user-attachments/assets/c35ffba9-daf2-47c5-9854-03f2bf7e295b" />
+
+## pptx
+
+[Presentation.pptx](https://github.com/user-attachments/files/24582208/Pitch.pptx)
+
