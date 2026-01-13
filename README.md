@@ -53,8 +53,8 @@ cd client
 Then apply the schema:
 
 ```bash
-npm install
-npm run db:push
+bun install
+bun run db:push
 ```
 
 ### 3) Create server cluster
@@ -78,7 +78,7 @@ Set `AGENT_SERVER_URL` to the running judge server address.
 
 ```bash
 cd client
-npm run dev
+bun run dev
 ```
 
 Open `http://localhost:3000`.
