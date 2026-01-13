@@ -8,11 +8,11 @@ import { FaReact, FaPython } from "react-icons/fa";
 import { SiCplusplus } from "react-icons/si";
 import { useRouter } from "next/navigation";
 
-const categoryIcons = {
-  react: FaReact,
-  python: FaPython,
-  "c++": SiCplusplus,
-};
+const categoryMeta = {
+  React: { slug: "react", Icon: FaReact },
+  Python: { slug: "python", Icon: FaPython },
+  "C++": { slug: "cpp", Icon: SiCplusplus },
+} as const;
 
 export default function Problems() {
   const router = useRouter();
@@ -49,17 +49,16 @@ export default function Problems() {
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {categoryEnum.enumValues.map((category) => {
-            const iconKey =
-              category.toLowerCase() as keyof typeof categoryIcons;
-            const Icon = categoryIcons[iconKey];
+            const meta =
+              categoryMeta[category as keyof typeof categoryMeta];
+            if (!meta) return null;
+            const { Icon, slug } = meta;
 
             return (
               <Card
                 key={category}
                 className="group cursor-pointer border-slate-200/70 bg-white/90 transition-all hover:-translate-y-1 hover:border-slate-300 hover:shadow-[0_20px_40px_-24px_rgba(15,23,42,0.35)]"
-                onClick={() =>
-                  router.push(`problems/${category.toLowerCase()}`)
-                }
+                onClick={() => router.push(`/problems/${slug}`)}
               >
                 <CardContent className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
                   <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200/70 bg-slate-50 shadow-sm transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-md">

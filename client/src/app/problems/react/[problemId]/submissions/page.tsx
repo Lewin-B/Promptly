@@ -58,21 +58,9 @@ export default async function ProblemSubmissionsPage({
           <section className="grid gap-4 md:grid-cols-2">
             {data.submissions.map((submission) => {
               const analysis = submission.analysis;
-              const scores = analysis
-                ? [
-                    analysis.codeQuality.score,
-                    analysis.functionality.score,
-                    analysis.productionAbility.score,
-                    analysis.chatHistory.score,
-                  ]
-                : [];
-              const averageScore =
-                scores.length > 0
-                  ? Math.round(
-                      scores.reduce((sum, value) => sum + value, 0) /
-                        scores.length,
-                    )
-                  : null;
+              const buildScore = analysis?.buildScore?.score ?? null;
+              const tokenEfficiency =
+                analysis?.tokenEfficiency?.score ?? null;
               const statusTone =
                 submission.status === "success"
                   ? "text-emerald-600"
@@ -99,19 +87,33 @@ export default async function ProblemSubmissionsPage({
                     </span>
                   </div>
                   <div className="mt-3 flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Average score</span>
+                    <span className="text-muted-foreground">Build score</span>
                     <span
                       className={`font-semibold ${
-                        averageScore === null
+                        buildScore === null
                           ? "text-slate-500"
-                          : getScoreTone(averageScore)
+                          : getScoreTone(buildScore)
                       }`}
                     >
-                      {averageScore ?? "N/A"}
+                      {buildScore ?? "N/A"}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      Token efficiency
+                    </span>
+                    <span
+                      className={`font-semibold ${
+                        tokenEfficiency === null
+                          ? "text-slate-500"
+                          : getScoreTone(tokenEfficiency)
+                      }`}
+                    >
+                      {tokenEfficiency ?? "N/A"}
                     </span>
                   </div>
                   <p className="mt-3 text-xs text-slate-600">
-                    {analysis?.overallVerdict ??
+                    {analysis?.buildScore?.rationale ??
                       "Analyzer output unavailable for this submission."}
                   </p>
                   <div className="mt-4 text-xs font-semibold tracking-[0.3em] text-slate-500 uppercase">

@@ -68,19 +68,23 @@ function getChatHistory(chatHistory: unknown): SubmissionChatMessage[] {
 
 function SubmissionInfo({
   status,
-  executionTime,
+  buildTime,
   timestamp,
   chatHistory,
   buildScore,
+  buildScoreRationale,
   tokenEfficiency,
+  tokenEfficiencyRationale,
   isLoading,
 }: {
   status?: string | null;
-  executionTime?: string | null;
+  buildTime?: string | null;
   timestamp?: string | null;
   chatHistory: SubmissionChatMessage[];
   buildScore?: number | null;
+  buildScoreRationale?: string | null;
   tokenEfficiency?: number | null;
+  tokenEfficiencyRationale?: string | null;
   isLoading: boolean;
 }) {
   if (isLoading) {
@@ -134,11 +138,9 @@ function SubmissionInfo({
         </span>
       </div>
       <div className="space-y-1">
-        <p className="text-muted-foreground text-xs uppercase">
-          Execution time
-        </p>
+        <p className="text-muted-foreground text-xs uppercase">Build time</p>
         <p className="text-sm font-semibold text-slate-900">
-          {executionTime ?? "Not recorded"}
+          {buildTime ?? "Not recorded"}
         </p>
       </div>
       <div className="space-y-1">
@@ -156,6 +158,21 @@ function SubmissionInfo({
             variant={card.variant}
           />
         ))}
+      </div>
+      <div className="space-y-2 pt-2">
+        <p className="text-muted-foreground text-xs uppercase">Analysis notes</p>
+        <div className="space-y-2 text-xs text-slate-600">
+          <p>
+            <span className="font-semibold text-slate-700">Build score:</span>{" "}
+            {buildScoreRationale ?? "Not available."}
+          </p>
+          <p>
+            <span className="font-semibold text-slate-700">
+              Token efficiency:
+            </span>{" "}
+            {tokenEfficiencyRationale ?? "Not available."}
+          </p>
+        </div>
       </div>
       <div className="space-y-2 pt-2">
         <p className="text-muted-foreground text-xs uppercase">Chat history</p>
@@ -359,12 +376,18 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
                 >
                   <SubmissionInfo
                     status={data?.status ?? null}
-                    executionTime={null}
+                    buildTime={data?.analysis?.buildTime ?? null}
                     timestamp={null}
                     chatHistory={chatHistory}
                     buildScore={data?.analysis?.buildScore?.score ?? null}
+                    buildScoreRationale={
+                      data?.analysis?.buildScore?.rationale ?? null
+                    }
                     tokenEfficiency={
                       data?.analysis?.tokenEfficiency?.score ?? null
+                    }
+                    tokenEfficiencyRationale={
+                      data?.analysis?.tokenEfficiency?.rationale ?? null
                     }
                     isLoading={isLoading}
                   />

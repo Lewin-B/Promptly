@@ -5,22 +5,7 @@ import { useMemo } from "react";
 
 import { Badge } from "~/components/ui/badge";
 import { authClient } from "~/server/better-auth/client";
-import type { AnalyzerResult } from "~/server/types/analysis";
 import { api } from "~/trpc/react";
-
-function getAverageScore(analysis: AnalyzerResult | null) {
-  if (!analysis) return null;
-  const scores = [
-    analysis.codeQuality.score,
-    analysis.functionality.score,
-    analysis.productionAbility.score,
-    analysis.chatHistory.score,
-  ];
-  if (scores.length === 0) return null;
-  return Math.round(
-    scores.reduce((sum, value) => sum + value, 0) / scores.length,
-  );
-}
 
 function getScoreTone(score: number) {
   if (score >= 90) return "text-emerald-600";
@@ -149,7 +134,10 @@ export default function ProfilePage() {
                 </div>
                 <div className="mt-5 grid gap-3 md:grid-cols-2">
                   {group.submissions.map((submission) => {
-                    const averageScore = getAverageScore(submission.analysis);
+                    const buildScore =
+                      submission.analysis?.buildScore?.score ?? null;
+                    const tokenEfficiency =
+                      submission.analysis?.tokenEfficiency?.score ?? null;
                     const statusTone =
                       submission.status === "success"
                         ? "text-emerald-600"
@@ -176,19 +164,31 @@ export default function ProfilePage() {
                           </span>
                         </div>
                         <div className="mt-3 flex items-center justify-between text-xs text-slate-600">
-                          <span>Average score</span>
+                          <span>Build score</span>
                           <span
                             className={`font-semibold ${
-                              averageScore === null
+                              buildScore === null
                                 ? "text-slate-500"
-                                : getScoreTone(averageScore)
+                                : getScoreTone(buildScore)
                             }`}
                           >
-                            {averageScore ?? "N/A"}
+                            {buildScore ?? "N/A"}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between text-xs text-slate-600">
+                          <span>Token efficiency</span>
+                          <span
+                            className={`font-semibold ${
+                              tokenEfficiency === null
+                                ? "text-slate-500"
+                                : getScoreTone(tokenEfficiency)
+                            }`}
+                          >
+                            {tokenEfficiency ?? "N/A"}
                           </span>
                         </div>
                         <p className="mt-3 text-xs text-slate-600">
-                          {submission.analysis?.overallVerdict ??
+                          {submission.analysis?.buildScore?.rationale ??
                             "Analyzer output unavailable for this submission."}
                         </p>
                       </Link>

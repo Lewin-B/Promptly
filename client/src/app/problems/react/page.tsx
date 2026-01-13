@@ -89,7 +89,7 @@ export default function ProblemsByCategoryPage() {
               .map((problem) => (
               <Link
                 key={problem.id}
-                href={`/problems/${problem.category.toLowerCase()}/${problem.id}`}
+                href={`/problems/react/${problem.id}`}
                 className="block"
               >
                 <Card className="border-slate-200/70 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
