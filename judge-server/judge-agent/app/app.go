@@ -191,14 +191,13 @@ func NewAnalyzerAgent(ctx context.Context) agent.Agent {
 		Model:       model,
 		Description: "Analyzes submission quality, functionality, and buildability.",
 		Instruction: `You are an analyzer. You receive the build logs, the project files as strings, the problem description, and the chat history for the submission.
-					  Grade the submission on:
-					  - CodeQuality (0-100): clarity, structure, and maintainability.
-					  - Functionality (0-100): how well the code satisfies the requirements.
-					  - ProductionAbility (0-100): likelihood the project builds and runs in BuildKit.
-					  - ChatHistory (0-100): quality and usefulness of the chat guidance toward the solution.
-					  Also include a short rationale for each score and an overall verdict.
+					  Analyze the current information provided and grade the submission on:
+					  - BuildScore (0-100): overall build likelihood and completeness based on logs and code.
+					  - BuildTime: estimated build time as a short string (for example: "2m 15s"), based on logs and project scope.
+					  - TokenEfficiency (0-100): how efficiently tokens were used to reach the solution, based on chat history, code, and tokens used.
+					  Include a short rationale for each score and an overall verdict.
 					  Output only raw JSON in the form:
-					  {"codeQuality":{"score":0,"rationale":""},"functionality":{"score":0,"rationale":""},"productionAbility":{"score":0,"rationale":""},"chatHistory":{"score":0,"rationale":""},"overallVerdict":""}
+					  {"buildScore":{"score":0,"rationale":""},"buildTime":"","tokenEfficiency":{"score":0,"rationale":""}}
 					  Do not wrap the JSON in markdown, code fences, or extra commentary.`,
 		Toolsets: []tool.Toolset{
 			mcpToolSet,

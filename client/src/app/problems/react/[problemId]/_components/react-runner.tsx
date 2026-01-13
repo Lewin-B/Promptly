@@ -49,6 +49,7 @@ export default function CodeRunner({
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [tokensUsed, setTokensUsed] = useState(0);
   const sessionEndRef = useRef<number | null>(null);
   const { sandpack } = useSandpack();
   const router = useRouter();
@@ -158,6 +159,7 @@ export default function CodeRunner({
         files: sandpack.files,
         submissionId: nextSubmissionId,
         chatHistory,
+        tokensUsed,
       });
       setSubmitMessage("Submission sent");
       if (response?.submissionRecordId) {
@@ -168,7 +170,14 @@ export default function CodeRunner({
       setSubmitMessage("Submission failed");
       setSubmissionError("We hit an error while processing your submission.");
     }
-  }, [problemId, sandpack.files, submitSolution, chatHistory, router]);
+  }, [
+    problemId,
+    sandpack.files,
+    submitSolution,
+    chatHistory,
+    router,
+    tokensUsed,
+  ]);
 
   const handleBeginSubmit = useCallback(() => {
     setShowCaution(true);
@@ -218,6 +227,7 @@ export default function CodeRunner({
             <AssistantSidebar
               problemDescription={problemDescription}
               onMessagesChange={setChatHistory}
+              onTokensUsedChange={setTokensUsed}
             />
           </div>
         </ResizablePanel>

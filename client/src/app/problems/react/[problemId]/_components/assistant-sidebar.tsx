@@ -36,11 +36,13 @@ const MODEL_OPTIONS: Array<{ value: AiModel; label: string }> = [
 type AssistantSidebarProps = {
   problemDescription: ProblemDescriptionProps;
   onMessagesChange?: (messages: ChatMessage[]) => void;
+  onTokensUsedChange?: (tokensUsed: number) => void;
 };
 
 export function AssistantSidebar({
   problemDescription,
   onMessagesChange,
+  onTokensUsedChange,
 }: AssistantSidebarProps) {
   const defaultMessages: ChatMessage[] = [
     {
@@ -96,7 +98,11 @@ export function AssistantSidebar({
         typeof result.tokens_used === "number" &&
         Number.isFinite(result.tokens_used)
       ) {
-        setTokensUsed((prev) => prev + (result.tokens_used ?? 0));
+        setTokensUsed((prev) => {
+          const next = prev + (result.tokens_used ?? 0);
+          onTokensUsedChange?.(next);
+          return next;
+        });
       }
 
       setMessages([
@@ -158,6 +164,7 @@ export function AssistantSidebar({
   const handleClearHistory = () => {
     setMessages(defaultMessages);
     setLastApplied([]);
+    setTokensUsed(0);
     // if (typeof window !== "undefined") {
     //   window.localStorage.removeItem(storageKey);
     // }
@@ -166,6 +173,10 @@ export function AssistantSidebar({
   useEffect(() => {
     onMessagesChange?.(messages);
   }, [messages, onMessagesChange]);
+
+  useEffect(() => {
+    onTokensUsedChange?.(tokensUsed);
+  }, [tokensUsed, onTokensUsedChange]);
 
   return (
     <div className="flex h-full w-full flex-col gap-3 overflow-scroll">

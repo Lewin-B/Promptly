@@ -71,12 +71,16 @@ function SubmissionInfo({
   executionTime,
   timestamp,
   chatHistory,
+  buildScore,
+  tokenEfficiency,
   isLoading,
 }: {
   status?: string | null;
   executionTime?: string | null;
   timestamp?: string | null;
   chatHistory: SubmissionChatMessage[];
+  buildScore?: number | null;
+  tokenEfficiency?: number | null;
   isLoading: boolean;
 }) {
   if (isLoading) {
@@ -102,6 +106,23 @@ function SubmissionInfo({
     status === "success" ? "text-emerald-600" : "text-rose-600";
   const statusBg = status === "success" ? "bg-emerald-50" : "bg-rose-50";
 
+  const scoreCards: Array<{
+    label: string;
+    value: number | null;
+    variant: "default" | "eco";
+  }> = [
+    {
+      label: "Build score",
+      value: typeof buildScore === "number" ? buildScore : null,
+      variant: "default",
+    },
+    {
+      label: "Token efficiency",
+      value: typeof tokenEfficiency === "number" ? tokenEfficiency : null,
+      variant: "eco",
+    },
+  ];
+
   return (
     <div className="bg-card flex-1 space-y-4 overflow-y-auto rounded-lg border p-4 text-sm">
       <div className="space-y-1">
@@ -125,6 +146,16 @@ function SubmissionInfo({
         <p className="text-sm font-semibold text-slate-900">
           {timestamp ?? "Not recorded"}
         </p>
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {scoreCards.map((card) => (
+          <ScoreRing
+            key={card.label}
+            label={card.label}
+            value={card.value}
+            variant={card.variant}
+          />
+        ))}
       </div>
       <div className="space-y-2 pt-2">
         <p className="text-muted-foreground text-xs uppercase">Chat history</p>
@@ -150,6 +181,86 @@ function SubmissionInfo({
             ))}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function ScoreRing({
+  label,
+  value,
+  variant = "default",
+}: {
+  label: string;
+  value: number | null;
+  variant?: "default" | "eco";
+}) {
+  const size = 72;
+  const strokeWidth = 8;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const normalizedValue =
+    typeof value === "number"
+      ? Math.max(0, Math.min(100, Math.round(value)))
+      : null;
+  const dashOffset =
+    normalizedValue === null
+      ? circumference
+      : circumference - (normalizedValue / 100) * circumference;
+  const isEco = variant === "eco";
+  const cardClass = isEco
+    ? "bg-emerald-50/70 border-emerald-100"
+    : "bg-background";
+  const ringBaseClass = isEco ? "text-emerald-100" : "text-slate-200";
+  const ringProgressClass = isEco ? "text-emerald-500" : "text-primary";
+  const labelClass = isEco ? "text-emerald-700" : "text-muted-foreground";
+  const hintText =
+    normalizedValue === null
+      ? "Not recorded"
+      : isEco
+        ? "Eco score out of 100"
+        : "Out of 100";
+
+  return (
+    <div
+      className={`flex items-center gap-3 rounded-lg border px-3 py-2 ${cardClass}`}
+    >
+      <div className="relative">
+        <svg
+          width={size}
+          height={size}
+          viewBox={`0 0 ${size} ${size}`}
+          className={ringBaseClass}
+        >
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke="currentColor"
+            strokeWidth={strokeWidth}
+            fill="transparent"
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke="currentColor"
+            strokeWidth={strokeWidth}
+            fill="transparent"
+            strokeDasharray={circumference}
+            strokeDashoffset={dashOffset}
+            strokeLinecap="round"
+            className={ringProgressClass}
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-slate-900">
+          {normalizedValue ?? "N/A"}
+        </div>
+      </div>
+      <div className="space-y-1">
+        <p className={`text-xs uppercase ${labelClass}`}>{label}</p>
+        <p className="text-xs text-slate-500">{hintText}</p>
       </div>
     </div>
   );
@@ -251,6 +362,10 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
                     executionTime={null}
                     timestamp={null}
                     chatHistory={chatHistory}
+                    buildScore={data?.analysis?.buildScore?.score ?? null}
+                    tokenEfficiency={
+                      data?.analysis?.tokenEfficiency?.score ?? null
+                    }
                     isLoading={isLoading}
                   />
                 </TabsContent>

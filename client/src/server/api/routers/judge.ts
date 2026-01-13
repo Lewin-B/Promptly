@@ -70,6 +70,7 @@ export const judgeRouter = createTRPCRouter({
         files: sandpackFileSchema,
         submissionId: z.string().min(1),
         chatHistory: z.array(chatMessageSchema),
+        tokensUsed: z.number().int().nonnegative().optional(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
@@ -128,6 +129,12 @@ export const judgeRouter = createTRPCRouter({
         currentStage = "analysis";
         updateSubmissionProgress(input.submissionId, currentStage, null);
 
+        const tokenCount =
+          typeof input.tokensUsed === "number" &&
+          Number.isFinite(input.tokensUsed)
+            ? input.tokensUsed
+            : estimateTokenCount(input.chatHistory);
+
         const analyzerResponse = await fetch(
           `${env.AGENT_SERVER_URL}/analyze`,
           {
@@ -159,6 +166,7 @@ export const judgeRouter = createTRPCRouter({
                         files: normalizedFiles,
                         buildLogs: deployResponse?.build_logs ?? "",
                         chatHistory: input.chatHistory,
+                        tokensUsed: tokenCount,
                       },
                     },
                   ],
@@ -427,4 +435,13 @@ function parseAnalyzerResult(bodyText: string): AnalyzerResponse | null {
     console.warn("Failed to parse analyzer response:", error);
     return null;
   }
+}
+
+function estimateTokenCount(messages: Array<{ content: string }>): number {
+  if (!messages.length) return 0;
+  const totalChars = messages.reduce(
+    (sum, message) => sum + message.content.length,
+    0,
+  );
+  return Math.max(1, Math.ceil(totalChars / 4));
 }
