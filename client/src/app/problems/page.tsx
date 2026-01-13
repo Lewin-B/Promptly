@@ -49,8 +49,7 @@ export default function Problems() {
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {categoryEnum.enumValues.map((category) => {
-            const meta =
-              categoryMeta[category as keyof typeof categoryMeta];
+            const meta = categoryMeta[category];
             if (!meta) return null;
             const { Icon, slug } = meta;
 
