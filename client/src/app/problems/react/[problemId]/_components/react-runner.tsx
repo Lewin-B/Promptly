@@ -151,7 +151,7 @@ export default function CodeRunner({
     setSubmissionError(null);
     const nextSubmissionId = crypto.randomUUID();
     setSubmissionId(nextSubmissionId);
-    setSubmissionStage("tests");
+    setSubmissionStage("deploy");
     try {
       const response = await submitSolution({
         problemId,

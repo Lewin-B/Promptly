@@ -40,7 +40,8 @@ export default function ProfilePage() {
     enabled: Boolean(user),
   });
 
-  const problemGroups = submissionsData?.problems ?? [];
+  const problems = submissionsData?.problems;
+  const problemGroups = useMemo(() => problems ?? [], [problems]);
 
   const stats = useMemo(() => {
     const totalSubmissions = problemGroups.reduce(
@@ -148,9 +149,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="mt-5 grid gap-3 md:grid-cols-2">
                   {group.submissions.map((submission) => {
-                    const averageScore = getAverageScore(
-                      submission.analysis as AnalyzerResult | null,
-                    );
+                    const averageScore = getAverageScore(submission.analysis);
                     const statusTone =
                       submission.status === "success"
                         ? "text-emerald-600"

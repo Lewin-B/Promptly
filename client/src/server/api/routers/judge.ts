@@ -51,10 +51,6 @@ RUN npm install
 
 COPY . .
 
-# Run tests in CI mode so they don't hang
-ENV CI=true
-RUN npm run test
-
 # Build the React app
 RUN npm run build
 
@@ -305,7 +301,7 @@ export const judgeRouter = createTRPCRouter({
 
     type ProblemGroup = {
       problem: typeof Problem.$inferSelect;
-      submissions: typeof Submission.$inferSelect[];
+      submissions: (typeof Submission.$inferSelect)[];
     };
     const grouped = new Map<number, ProblemGroup>();
 

@@ -1,4 +1,4 @@
-export type SubmissionStage = "tests" | "deploy" | "analysis" | "done";
+export type SubmissionStage = "deploy" | "analysis" | "done";
 
 export interface SubmissionProgressState {
   stage: SubmissionStage;
