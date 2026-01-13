@@ -89,9 +89,11 @@ Open `http://localhost:3000`.
 
 ## Team members and contributions
 
-- [Lewin Bobda] - [Coded]
+- Lewin Bobda - Coded
 
 ## Demo video and screenshots
 
-- Demo video: [Add link here](https://example.com/demo)
+- Demo video: [Adding link here](https://example.com/demo)
 - Screenshots:
+
+## slides

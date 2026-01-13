@@ -17,6 +17,11 @@ const difficultyStyles: Record<string, string> = {
   Medium: "border-amber-200 bg-amber-50 text-amber-700",
   Hard: "border-rose-200 bg-rose-50 text-rose-700",
 };
+const difficultyOrder: Record<string, number> = {
+  Easy: 1,
+  Medium: 2,
+  Hard: 3,
+};
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", { timeZone: "UTC" });
 
@@ -74,7 +79,14 @@ export default function ProblemsByCategoryPage() {
           </Card>
         ) : data?.length ? (
           <div className="grid gap-4 sm:grid-cols-2">
-            {data.map((problem) => (
+            {[...data]
+              .sort((a, b) => {
+                const aOrder = difficultyOrder[a.difficulty] ?? 99;
+                const bOrder = difficultyOrder[b.difficulty] ?? 99;
+                if (aOrder !== bOrder) return aOrder - bOrder;
+                return a.name.localeCompare(b.name);
+              })
+              .map((problem) => (
               <Link
                 key={problem.id}
                 href={`/problems/${problem.category.toLowerCase()}/${problem.id}`}
