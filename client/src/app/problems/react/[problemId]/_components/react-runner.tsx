@@ -85,7 +85,7 @@ export default function CodeRunner({
         // );
         window.alert("Your 15-minute session has ended.");
       },
-      15 * 60 * 1000,
+      Number(problemDescription.data?.description.timeLimit) * 60 * 1000,
     );
 
     const intervalId = window.setInterval(() => {
